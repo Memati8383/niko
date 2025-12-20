@@ -1,0 +1,2 @@
+# niko
+niko yapay zeka 
