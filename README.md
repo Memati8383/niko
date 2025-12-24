@@ -1,90 +1,55 @@
 # niko
 niko yapay zeka 
 
-Aşağıda verdiğin sistem için temiz, anlaşılır ve profesyonel bir README.md hazırladım.
-Bunu doğrudan README.md olarak kaydedip kullanabilirsin.
+# 📘 Niko – Nutuk Local RAG Asistanı
 
-
----
-
-📘 Niko – Nutuk Local RAG Asistanı
-
-Niko, Mustafa Kemal Atatürk’ün Nutuk adlı eserini temel alarak çalışan,
-tamamen local, ücretsiz, kotasız bir Soru-Cevap (RAG) uygulamasıdır.
+**Niko**, Mustafa Kemal Atatürk’ün **Nutuk** adlı eserini temel alarak çalışan,  
+**tamamen local**, **ücretsiz**, **kotasız** bir **Soru-Cevap (RAG) uygulamasıdır**.
 
 Bu proje:
-
-❌ Bulut API kullanmaz
-
-❌ Gemini / OpenAI kullanmaz
-
-❌ LangChain kullanmaz
-
-✅ Ollama + Local LLM kullanır
-
-✅ FAISS ile vektör arama yapar
-
-✅ Nutuk dışına çıkmaz
-
-
+- ❌ Bulut API kullanmaz  
+- ❌ Gemini / OpenAI kullanmaz  
+- ❌ LangChain kullanmaz  
+- ✅ Ollama + Local LLM kullanır  
+- ✅ FAISS ile vektör arama yapar  
+- ✅ Nutuk dışına çıkmaz  
 
 ---
 
-🚀 Özellikler
+## 🚀 Özellikler
 
-📘 Kaynak: nutuk.pdf
-
-🧠 Model: phi-3 (Ollama)
-
-🔍 Arama: FAISS (local vector database)
-
-🇹🇷 Türkçe prompt optimizasyonu
-
-🧠 Hallüsinasyon azaltılmış cevaplar
-
-⚡ Index ve model sadece 1 kere oluşturulur
-
-💻 Windows uyumlu
-
-
+- 📘 Kaynak: `nutuk.pdf`
+- 🧠 Model: **phi-3 (Ollama)**
+- 🔍 Arama: **FAISS (local vector database)**
+- 🇹🇷 Türkçe prompt optimizasyonu
+- 🧠 Hallüsinasyon azaltılmış cevaplar
+- ⚡ Index ve model **sadece 1 kere** oluşturulur
+- 💻 **Windows uyumlu**
 
 ---
 
-🧱 Mimari
+## 🧱 Mimari
 
-Kullanıcı Sorusu
-       ↓
-Sentence-Transformers (Embedding)
-       ↓
-FAISS (Benzer metinleri bulur)
-       ↓
-Ollama (Local LLM)
-       ↓
-Niko'nun Yanıtı
-
+Kullanıcı Sorusu ↓ Sentence-Transformers (Embedding) ↓ FAISS (Benzer metinleri bulur) ↓ Ollama (Local LLM) ↓ Niko'nun Yanıtı
 
 ---
 
-🛠️ Gereksinimler
+## 🛠️ Gereksinimler
 
-1️⃣ Ollama
-
+### 1️⃣ Ollama
 Ollama’yı indirip kur:
 
 https://ollama.com/download
 
-Kurulumdan sonra Ollama açık olmalı.
-
+Kurulumdan sonra **Ollama açık olmalı**.
 
 ---
 
-2️⃣ Python
-
-Python 3.9+ önerilir
-
+### 2️⃣ Python
+- Python **3.9+** önerilir
 
 Gerekli paketler:
-
+```bash
 pip install faiss-cpu sentence-transformers pypdf requests
 
 
@@ -183,3 +148,25 @@ Hiçbir veri dışarı gönderilmez
 
 
 
+---
+
+🔜 Geliştirme Fikirleri
+
+📌 Sayfa numarasıyla cevap
+
+🖥️ GUI (masaüstü arayüz)
+
+🌐 Web arayüz
+
+📄 Farklı PDF’ler ekleme
+
+🧠 Daha büyük local modeller
+
+
+
+---
+
+🧑‍💻 Lisans
+
+Bu proje eğitim ve kişisel kullanım içindir.
+Nutuk eseri, telif durumuna göre kullanıcı sorumluluğundadır.
