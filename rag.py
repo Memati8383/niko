@@ -1,152 +1,140 @@
 import os
-import sys
-import logging
+import subprocess
+import requests
+import faiss
+import numpy as np
+from pypdf import PdfReader
+from sentence_transformers import SentenceTransformer
 
-# Loglama yapılandırması
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# -----------------------------
+# AYARLAR
+# -----------------------------
+PDF_PATH = "nutuk.pdf"
+INDEX_PATH = "nutuk.index"
+CHUNKS_PATH = "nutuk_chunks.npy"
 
-# Gerekli paketleri kontrol et
-try:
-    from huggingface_hub import hf_hub_download
-    from langchain_community.document_loaders import PyPDFLoader
+LLM_MODEL = "phi3"
+EMBED_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+
+# -----------------------------
+# OLLAMA MODEL KONTROL
+# -----------------------------
+def ensure_llm():
     try:
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-    except ImportError:
-        from langchain.text_splitter import RecursiveCharacterTextSplitter
-    from langchain_community.vectorstores import Chroma
-    from langchain_community.embeddings import HuggingFaceEmbeddings
-    from langchain_community.llms import LlamaCpp
-    from langchain.chains import RetrievalQA
-    from langchain.prompts import PromptTemplate
-except ImportError as e:
-    logger.error(f"Gerekli paket eksik: {e}")
-    logger.error("Lütfen şunu çalıştırın: pip install langchain langchain-community pypdf chromadb sentence-transformers llama-cpp-python huggingface_hub")
-    sys.exit(1)
+        r = requests.get("http://localhost:11434/api/tags", timeout=3)
+        models = [m["name"] for m in r.json().get("models", [])]
+        if LLM_MODEL not in models:
+            print(f"🧠 Model indiriliyor: {LLM_MODEL}")
+            subprocess.run(["ollama", "pull", LLM_MODEL], check=True)
+        else:
+            print("✅ LLM hazır")
+    except:
+        raise RuntimeError("❌ Ollama çalışmıyor. Ollama'yı aç.")
 
-# Yapılandırma
-MODEL_REPO = "microsoft/Phi-3-mini-4k-instruct-gguf"
-MODEL_FILENAME = "Phi-3-mini-4k-instruct-q4.gguf"
-MODEL_DIR = "models"
-MODEL_PATH = os.path.join(MODEL_DIR, MODEL_FILENAME)
-VECTOR_DB_DIR = "vectordb_phi3"
+# -----------------------------
+# PDF OKU + SPLIT
+# -----------------------------
+def load_chunks():
+    reader = PdfReader(PDF_PATH)
+    chunks = []
 
-# PDF kontrolü
-POSSIBLE_PDF_PATHS = ["nutuk.pdf", "pdfs/nutuk.pdf"]
-PDF_PATH = None
-for path in POSSIBLE_PDF_PATHS:
-    if os.path.exists(path):
-        PDF_PATH = path
-        break
+    def split(text, size=800, overlap=100):
+        i = 0
+        out = []
+        while i < len(text):
+            out.append(text[i:i+size])
+            i += size - overlap
+        return out
 
-if not PDF_PATH:
-    logger.error("❌ 'nutuk.pdf' bulunamadı. Lütfen dosyayı bu dizine veya 'pdfs/' klasörüne ekleyin.")
-    sys.exit(1)
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            chunks.extend(split(text))
 
-def download_model():
-    """Phi-3 Mini GGUF modeli mevcut değilse indirir."""
-    if not os.path.exists(MODEL_PATH):
-        logger.info(f"⬇️ {MODEL_FILENAME} indiriliyor...")
-        os.makedirs(MODEL_DIR, exist_ok=True)
-        hf_hub_download(repo_id=MODEL_REPO, filename=MODEL_FILENAME, local_dir=MODEL_DIR)
-        logger.info("✅ Model indirildi.")
-    else:
-        logger.info("✅ Model zaten mevcut.")
+    return chunks
 
-def setup_rag():
-    """PDF'i işler, embedding'leri oluşturur ve RAG zincirini kurar."""
-    
-    # 1. PDF Yükle
-    logger.info(f"📄 PDF yükleniyor: {PDF_PATH}")
-    loader = PyPDFLoader(PDF_PATH)
-    documents = loader.load()
-    logger.info(f"   {len(documents)} sayfa yüklendi.")
+# -----------------------------
+# INDEX OLUŞTUR
+# -----------------------------
+def build_index():
+    print("📘 Nutuk okunuyor ve index oluşturuluyor...")
+    chunks = load_chunks()
+    np.save(CHUNKS_PATH, chunks)
 
-    # 2. Metni Parçala
-    logger.info("✂️ Metin parçalanıyor...")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    texts = text_splitter.split_documents(documents)
-    logger.info(f"   {len(texts)} parça oluşturuldu.")
+    embedder = SentenceTransformer(EMBED_MODEL)
+    embeddings = embedder.encode(chunks, show_progress_bar=True)
 
-    # 3. Embedding'leri Oluştur
-    logger.info("🧠 Embedding modeli yükleniyor (all-MiniLM-L6-v2)...")
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    
-    # 4. Vektör Veritabanı
-    logger.info("💾 Vektör veritabanı oluşturuluyor (ChromaDB)...")
-    # Veritabanı zaten varsa yükle? Basitlik adına yeniden oluşturuyoruz veya yüklüyoruz.
-    # Chroma, persist_directory ayarlandıysa kalıcılığı yönetir.
-    db = Chroma.from_documents(texts, embeddings, persist_directory=VECTOR_DB_DIR)
-    
-    # 5. LLM Yükle
-    logger.info("🤖 Phi-3 Mini modeli yükleniyor...")
-    llm = LlamaCpp(
-        model_path=MODEL_PATH,
-        temperature=0.1,
-        max_tokens=512,
-        n_ctx=4096, # Phi-3 bağlam penceresi
-        verbose=False
-    )
+    index = faiss.IndexFlatL2(embeddings.shape[1])
+    index.add(np.array(embeddings))
 
-    # 6. QA Zincirini Kur
-    # Phi-3 Talimat İstemi Şablonu
-    template = """<|user|>
-Aşağıdaki bağlamı kullanarak soruyu cevapla. Cevabı bilmiyorsan bilmiyorum de.
+    faiss.write_index(index, INDEX_PATH)
+    print("✅ Index hazır")
 
-Bağlam:
+# -----------------------------
+# SORU SOR
+# -----------------------------
+def ask(question, embedder, index, chunks):
+    q_emb = embedder.encode([question])
+    _, ids = index.search(q_emb, 4)
+
+    context = "\n".join(chunks[i] for i in ids[0])
+
+    prompt = f"""
+Senin adın Niko.
+
+Sen Mustafa Kemal Atatürk'ün Nutuk adlı eseri konusunda uzmansın.
+Cevaplarını SADECE aşağıdaki Nutuk metnine dayanarak ver.
+
+Kurallar:
+- Nutuk dışında bilgi ekleme
+- Tahmin yapma
+- Metinde yoksa aynen şunu söyle:
+"Niko olarak bu bilgiye Nutuk içerisinde rastlamadım."
+
+Nutuk Metni:
 {context}
 
 Soru:
 {question}
-<|end|>
-<|assistant|>
+
+Niko'nun Yanıtı:
 """
-    prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    qa = RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=db.as_retriever(search_kwargs={"k": 3}),
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": prompt}
+    r = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": LLM_MODEL,
+            "prompt": prompt,
+            "stream": False
+        }
     )
-    
-    return qa
 
-def main():
-    print("🚀 Nutuk RAG Sistemi Başlatılıyor...")
-    download_model()
-    
-    qa_chain = setup_rag()
-    
-    print("\n✅ Sistem hazır! Nutuk hakkında sorular sorabilirsiniz. (Çıkış için 'q' veya 'exit')")
-    print("-" * 50)
-    
-    while True:
-        try:
-            query = input("\nSoru: ").strip()
-            if not query:
-                continue
-            if query.lower() in ['q', 'exit', 'quit']:
-                print("👋 Görüşmek üzere!")
-                break
-            
-            print("⏳ Düşünüyor...")
-            res = qa_chain.invoke({"query": query})
-            answer = res['result']
-            
-            print(f"\n🤖 Cevap: {answer}")
-            
-            # Kaynakları görmek için yorumu kaldırın
-            # print("\nKaynaklar:")
-            # for doc in res['source_documents']:
-            #     print(f"- Sayfa {doc.metadata.get('page', '?')}: {doc.page_content[:100]}...")
-                
-        except KeyboardInterrupt:
-            print("\n👋 İşlem iptal edildi.")
-            break
-        except Exception as e:
-            logger.error(f"Bir hata oluştu: {e}")
+    return r.json()["response"]
 
+# -----------------------------
+# MAIN
+# -----------------------------
 if __name__ == "__main__":
-    main()
+
+    if not os.path.exists(PDF_PATH):
+        raise FileNotFoundError("❌ nutuk.pdf bulunamadı")
+
+    ensure_llm()
+
+    if not os.path.exists(INDEX_PATH):
+        build_index()
+    else:
+        print("✅ Index mevcut, tekrar oluşturulmadı")
+
+    chunks = np.load(CHUNKS_PATH, allow_pickle=True)
+    index = faiss.read_index(INDEX_PATH)
+    embedder = SentenceTransformer(EMBED_MODEL)
+
+    print("\n🟢 Niko hazır. Çıkmak için 'exit' yaz.\n")
+
+    while True:
+        q = input("❓ Soru: ")
+        if q.lower() == "exit":
+            break
+
+        print("\n🤖 Niko:", ask(q, embedder, index, chunks), "\n")
