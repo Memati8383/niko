@@ -1,156 +1,185 @@
 # niko
 niko yapay zeka 
 
-Çok iyi bir noktaya geldin 👌
-Şu anda sistemin doğru çalışıyor, ama beklenen şey yanlış:
-
-❗ all-MiniLM-L6-v2 ZEKÂ DEĞİLDİR.
-Bu model cevap üretmez, sadece arama yapar.
-
-Şu an yaptığın şey:
-
-Soru → embedding
-
-FAISS → en alakalı metin parçalarını getiriyor
-
-Sen o parçaları doğrudan “cevap” sanıyorsun
-
-Bu yüzden “saçma” gibi geliyor.
-
-🧠 DOĞRU MİMARİ (KRİTİK AYRIM)
-❌ Şu an:
-Soru → Embedding → FAISS → Metin parçaları
-
-✅ Olması gereken (RAG):
-Soru
- ↓
-FAISS (ilgili metin)
- ↓
-LLM (akıllı cevap üretir)  ← BU EKSİK
+Aşağıda verdiğin sistem için temiz, anlaşılır ve profesyonel bir README.md hazırladım.
+Bunu doğrudan README.md olarak kaydedip kullanabilirsin.
 
 
-👉 Eksik olan parça: LLM (dil modeli)
+---
 
-🎯 SENİN İSTEDİĞİN ŞEY
+📘 Niko – Nutuk Local RAG Asistanı
 
-“Atatürk kaç yılında Samsun’a çıktı?”
-→ “19 Mayıs 1919”
+Niko, Mustafa Kemal Atatürk’ün Nutuk adlı eserini temel alarak çalışan,
+tamamen local, ücretsiz, kotasız bir Soru-Cevap (RAG) uygulamasıdır.
 
-Bunu yapacak olan:
-❌ MiniLM değil
-✅ küçük bir LLM
+Bu proje:
 
-🧠 EN KÜÇÜK VE UYGUN ÇÖZÜM (ÖNERİLEN)
-🥇 Phi-3 Mini (INT4)
+❌ Bulut API kullanmaz
 
-~500 MB
+❌ Gemini / OpenAI kullanmaz
 
-Çok küçük
+❌ LangChain kullanmaz
 
-RAG için ideal
+✅ Ollama + Local LLM kullanır
 
-Türkçe yeterli
+✅ FAISS ile vektör arama yapar
 
-Alternatif:
-
-Phi-2 (INT4)
-
-LLaMA 3.2 1B (INT4 – çok zayıf ama çalışır)
-
-🔧 ŞİMDİ SANA “TEK CEVAP” ÜRETEN KODU VERİYORUM
-
-Aşağıdaki kod:
-
-FAISS’ten en alakalı chunk’ı alır
-
-LLM’ye “sadece buna bakarak cevap ver” der
-
-Tek, net cevap döner
-
-🟢 ADIM 7 — LLM İLE AKILLI CEVAP ÜRETME
-1️⃣ Gerekli kütüphane
-pip install llama-cpp-python
-
-2️⃣ Phi-3 Mini modelini indir (GGUF – INT4)
-
-(Colab’a uygun)
-
-wget https://huggingface.co/microsoft/Phi-3-mini-4k-instruct-gguf/resolve/main/phi-3-mini-4k-instruct-q4.gguf
-
-3️⃣ LLM’yi bağlayan kod
-from llama_cpp import Llama
-
-llm = Llama(
-    model_path="phi-3-mini-4k-instruct-q4.gguf",
-    n_ctx=2048,
-    n_threads=2
-)
-
-4️⃣ RAG + CEVAP ÜRETİMİ
-def generate_answer(question: str, context: str):
-    prompt = f"""
-Aşağıdaki metne SADECE dayanarak kısa ve net cevap ver.
-
-Metin:
-{context}
-
-Soru:
-{question}
-
-Cevap:
-"""
-    response = llm(prompt, max_tokens=50, stop=["\n"])
-    return response["choices"][0]["text"].strip()
-
-5️⃣ FAISS → CEVAP (TAM AKIŞ)
-def ask(question: str):
-    query_embedding = model.encode([question], convert_to_numpy=True)
-    _, indices = index.search(query_embedding, 1)
-
-    context = chunks[indices[0][0]]
-    answer = generate_answer(question, context)
-
-    return answer
-
-🔥 TEST
-print(ask("Atatürk kaç yılında Samsun'a çıktı?"))
-
-Beklenen çıktı:
-19 Mayıs 1919
-
-🧠 NEDEN ARTIK “AKILLI”?
-
-MiniLM → bulur
-
-Phi-3 → anlar ve cevaplar
-
-Tek cevap
-
-Saçmalamaz
-
-PDF dışına çıkmaz
-
-⚠️ ÖNEMLİ PROMPT İPUCU
-
-Şu cümle çok kritik:
-
-SADECE yukarıdaki metne dayanarak cevap ver
+✅ Nutuk dışına çıkmaz
 
 
-Bu, halüsinasyonu keser.
 
-🎯 NET ÖZET
-Parça	Görev
-MiniLM	Bulma
-FAISS	Hız
-Phi-3	Akıl
-RAG	Doğruluk
-🚀 SONRAKİ ADIM
+---
 
-İstersen:
-1️⃣ FastAPI endpoint
-2️⃣ Mobil için JSON API
-3️⃣ PDF sayfa numarasıyla cevap
-4️⃣ Çoklu PDF + kaynak gösterimi
+🚀 Özellikler
 
-Hangisine geçelim?
+📘 Kaynak: nutuk.pdf
+
+🧠 Model: phi-3 (Ollama)
+
+🔍 Arama: FAISS (local vector database)
+
+🇹🇷 Türkçe prompt optimizasyonu
+
+🧠 Hallüsinasyon azaltılmış cevaplar
+
+⚡ Index ve model sadece 1 kere oluşturulur
+
+💻 Windows uyumlu
+
+
+
+---
+
+🧱 Mimari
+
+Kullanıcı Sorusu
+       ↓
+Sentence-Transformers (Embedding)
+       ↓
+FAISS (Benzer metinleri bulur)
+       ↓
+Ollama (Local LLM)
+       ↓
+Niko'nun Yanıtı
+
+
+---
+
+🛠️ Gereksinimler
+
+1️⃣ Ollama
+
+Ollama’yı indirip kur:
+
+https://ollama.com/download
+
+Kurulumdan sonra Ollama açık olmalı.
+
+
+---
+
+2️⃣ Python
+
+Python 3.9+ önerilir
+
+
+Gerekli paketler:
+
+pip install faiss-cpu sentence-transformers pypdf requests
+
+
+---
+
+📂 Dosya Yapısı
+
+project/
+│
+├─ niko_nutuk_cli.py
+├─ nutuk.pdf
+├─ README.md
+│
+├─ nutuk.index          (otomatik oluşur)
+├─ nutuk_chunks.npy    (otomatik oluşur)
+
+
+---
+
+▶️ Çalıştırma
+
+python niko_nutuk_cli.py
+
+İlk çalıştırmada:
+
+phi-3 modeli otomatik indirilir
+
+Nutuk.pdf parçalanır
+
+FAISS index oluşturulur
+
+
+Sonraki çalıştırmalar: ⚡ Çok hızlı başlar (tekrar işlem yapılmaz)
+
+
+---
+
+💬 Kullanım
+
+Program başladıktan sonra terminalden soru sorabilirsin:
+
+❓ Soru: Samsun'a çıkışın önemi nedir?
+🤖 Niko: ...
+
+Çıkmak için:
+
+exit
+
+
+---
+
+📜 Cevap Kuralları
+
+Niko:
+
+Sadece Nutuk metnine dayanır
+
+Tahmin yapmaz
+
+Yorum katmaz
+
+Nutuk’ta yoksa şu cevabı verir:
+
+
+> "Niko olarak bu bilgiye Nutuk içerisinde rastlamadım."
+
+
+
+
+---
+
+🧠 Model Bilgisi
+
+Varsayılan model:
+
+phi3 (hafif, hızlı, 4 GB RAM yeterli)
+
+
+İstersen koddan şu modellere geçebilirsin:
+
+mistral:7b (8 GB RAM)
+
+llama3:8b (12+ GB RAM)
+
+
+
+---
+
+🔒 Gizlilik
+
+Tüm işlemler bilgisayarınızda gerçekleşir
+
+İnternet sadece ilk model indirme için gerekir
+
+Hiçbir veri dışarı gönderilmez
+
+
+
