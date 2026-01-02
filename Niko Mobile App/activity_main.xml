@@ -1,0 +1,45 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+android:layout_width="match_parent"
+android:layout_height="match_parent"
+android:background="#0B0F14">
+
+<!-- HALO (ARKA IŞIK) -->
+<View
+android:id="@+id/orbHalo"
+android:layout_width="260dp"
+android:layout_height="260dp"
+android:layout_centerInParent="true"
+android:background="@drawable/orb_halo"/>
+
+<!-- ANA ORB -->
+<View
+android:id="@+id/voiceOrb"
+android:layout_width="180dp"
+android:layout_height="180dp"
+android:layout_centerInParent="true"
+android:background="@drawable/orb_gradient"/>
+
+<!-- DURUM METNİ -->
+<TextView
+android:id="@+id/txtDebug"
+android:layout_width="wrap_content"
+android:layout_height="wrap_content"
+android:text="Hazır"
+android:textColor="#88FFFFFF"
+android:textSize="14sp"
+android:layout_centerHorizontal="true"
+android:layout_above="@id/btnMic"
+android:layout_marginBottom="24dp"/>
+
+<!-- MİKROFON BUTONU -->
+<ImageButton
+android:id="@+id/btnMic"
+android:layout_width="72dp"
+android:layout_height="72dp"
+android:layout_alignParentBottom="true"
+android:layout_centerHorizontal="true"
+android:layout_marginBottom="48dp"
+android:background="@drawable/mic_button"
+android:src="@android:drawable/ic_btn_speak_now"
+android:tint="#FFFFFF"/>
+</RelativeLayout>
