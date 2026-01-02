@@ -4,7 +4,7 @@
 
 ## 🚀 Özellikler
 
-- **Zeki Sohbet Botu:** Ollama ile yerel LLM (DeepSeek-R1-Distill-Qwen-14B vb.) entegrasyonu.
+- **Zeki Sohbet Botu:** Ollama ile yerel LLM (RefinedNeuro/RN_TR_R2:latest vb.) entegrasyonu.
 - **Sesli Yanıt:** `edge-tts` kullanarak gerçekçi Türkçe ses sentezleme (TTS).
 - **Web Arayüzü:** Markdown destekli, şık ve duyarlı (responsive) modern web arayüzü.
 - **Acil Durum Bilgisi:** Web arayüzünde entegre triyaj ve acil durum bilgilendirme paneli.
@@ -21,20 +21,25 @@
 
 - Python 3.8+
 - [Ollama](https://ollama.ai/) (Yerel makinede çalışıyor olmalı)
-- Gerekli Python kütüphaneleri:
+- Gerekli Python kütüphanelerini otomatik yükleyin:
 
   ```bash
   pip install -r requirements.txt
   ```
 
-- Gerekli Python kütüphaneleri:
+- Gerekli Python kütüphanelerini yükleyin:
   ```bash
   pip install fastapi uvicorn httpx edge-tts pydantic
   ```
 
 ### Arka Ucu Çalıştırma
 
-1. Ollama sunucusunun çalıştığından emin olun (varsayılan: port 11434).
+1. Ollama sunucusunu başlatın:
+
+   ```bash
+   ollama serve
+   ```
+
 2. API'yi başlatın:
 
    ```bash
@@ -59,7 +64,8 @@ cloudflared tunnel --url http://127.0.0.1:8000
 
 Bu komut size `https://....trycloudflare.com` uzantılı rastgele bir URL verecektir.
 
-**Güncel Tünel Adresi:** `https://streets-doom-atmospheric-relaxation.trycloudflare.com`
+> [!IMPORTANT] > **Ağ Geçidi Aktif**
+> 🌐 **Güncel Tünel Adresi:** [https://streets-doom-atmospheric-relaxation.trycloudflare.com](https://streets-doom-atmospheric-relaxation.trycloudflare.com)
 
 ## ⚙️ Yapılandırma
 
