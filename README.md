@@ -1,172 +1,71 @@
-# niko
-niko yapay zeka 
+# Niko AI Asistan
 
-# 📘 Niko – Nutuk Local RAG Asistanı
-
-**Niko**, Mustafa Kemal Atatürk’ün **Nutuk** adlı eserini temel alarak çalışan,  
-**tamamen local**, **ücretsiz**, **kotasız** bir **Soru-Cevap (RAG) uygulamasıdır**.
-
-Bu proje:
-- ❌ Bulut API kullanmaz  
-- ❌ Gemini / OpenAI kullanmaz  
-- ❌ LangChain kullanmaz  
-- ✅ Ollama + Local LLM kullanır  
-- ✅ FAISS ile vektör arama yapar  
-- ✅ Nutuk dışına çıkmaz  
-
----
+**Niko**, FastAPI tabanlı güçlü bir arka uç ve modern bir web arayüzü ile çalışan, Ollama destekli kişisel bir yapay zeka asistanıdır.
 
 ## 🚀 Özellikler
 
-- 📘 Kaynak: `nutuk.pdf`
-- 🧠 Model: **phi-3 (Ollama)**
-- 🔍 Arama: **FAISS (local vector database)**
-- 🇹🇷 Türkçe prompt optimizasyonu
-- 🧠 Hallüsinasyon azaltılmış cevaplar
-- ⚡ Index ve model **sadece 1 kere** oluşturulur
-- 💻 **Windows uyumlu**
+- **Zeki Sohbet Botu:** Ollama ile yerel LLM (DeepSeek-R1-Distill-Qwen-14B vb.) entegrasyonu.
+- **Sesli Yanıt:** `edge-tts` kullanarak gerçekçi Türkçe ses sentezleme (TTS).
+- **Web Arayüzü:** Markdown destekli, şık ve duyarlı (responsive) modern web arayüzü.
+- **Acil Durum Bilgisi:** Web arayüzünde entegre triyaj ve acil durum bilgilendirme paneli.
 
----
+## 📂 Proje Yapısı
 
-## 🧱 Mimari
+- `main.py`: Projenin ana FastAPI arka uç dosyası.
+- `static/`: Web arayüzü için gerekli HTML, CSS ve JavaScript dosyaları.
+- `.github/`: (İsteğe bağlı) GitHub Actions veya şablon dosyaları.
 
-Kullanıcı Sorusu ↓ Sentence-Transformers (Embedding) ↓ FAISS (Benzer metinleri bulur) ↓ Ollama (Local LLM) ↓ Niko'nun Yanıtı
+## 🛠️ Kurulum ve Çalıştırma
 
----
+### Gereksinimler
 
-## 🛠️ Gereksinimler
+- Python 3.8+
+- [Ollama](https://ollama.ai/) (Yerel makinede çalışıyor olmalı)
+- Gerekli Python kütüphaneleri:
 
-### 1️⃣ Ollama
-Ollama’yı indirip kur:
+  ```bash
+  pip install -r requirements.txt
+  ```
 
-https://ollama.com/download
+- Gerekli Python kütüphaneleri:
+  ```bash
+  pip install fastapi uvicorn httpx edge-tts pydantic
+  ```
 
-Kurulumdan sonra **Ollama açık olmalı**.
+### Arka Ucu Çalıştırma
 
----
+1. Ollama sunucusunun çalıştığından emin olun (varsayılan: port 11434).
+2. API'yi başlatın:
 
-### 2️⃣ Python
-- Python **3.9+** önerilir
+   ```bash
+   python main.py
+   ```
 
-Gerekli paketler:
+   _veya_
+
+   ```bash
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+
+3. Web arayüzüne tarayıcınızdan erişin: [http://localhost:8000](http://localhost:8000)
+
+### 🌐 Dışarıdan Erişim (Cloudflare Tunnel)
+
+Sunucunuza dışarıdan erişebilmek için **Cloudflare Tunnel** kullanabilirsiniz:
+
 ```bash
-pip install faiss-cpu sentence-transformers pypdf requests
+cloudflared tunnel --url http://127.0.0.1:8000
+```
 
+Bu komut size `https://....trycloudflare.com` uzantılı rastgele bir URL verecektir.
 
----
+**Güncel Tünel Adresi:** `https://streets-doom-atmospheric-relaxation.trycloudflare.com`
 
-📂 Dosya Yapısı
+## ⚙️ Yapılandırma
 
-project/
-│
-├─ niko_nutuk_cli.py
-├─ nutuk.pdf
-├─ README.md
-│
-├─ nutuk.index          (otomatik oluşur)
-├─ nutuk_chunks.npy    (otomatik oluşur)
+`main.py` içindeki aşağıdaki ortam değişkenleri düzenlenebilir:
 
-
----
-
-▶️ Çalıştırma
-
-python niko_nutuk_cli.py
-
-İlk çalıştırmada:
-
-phi-3 modeli otomatik indirilir
-
-Nutuk.pdf parçalanır
-
-FAISS index oluşturulur
-
-
-Sonraki çalıştırmalar: ⚡ Çok hızlı başlar (tekrar işlem yapılmaz)
-
-
----
-
-💬 Kullanım
-
-Program başladıktan sonra terminalden soru sorabilirsin:
-
-❓ Soru: Samsun'a çıkışın önemi nedir?
-🤖 Niko: ...
-
-Çıkmak için:
-
-exit
-
-
----
-
-📜 Cevap Kuralları
-
-Niko:
-
-Sadece Nutuk metnine dayanır
-
-Tahmin yapmaz
-
-Yorum katmaz
-
-Nutuk’ta yoksa şu cevabı verir:
-
-
-> "Niko olarak bu bilgiye Nutuk içerisinde rastlamadım."
-
-
-
-
----
-
-🧠 Model Bilgisi
-
-Varsayılan model:
-
-phi3 (hafif, hızlı, 4 GB RAM yeterli)
-
-
-İstersen koddan şu modellere geçebilirsin:
-
-mistral:7b (8 GB RAM)
-
-llama3:8b (12+ GB RAM)
-
-
-
----
-
-🔒 Gizlilik
-
-Tüm işlemler bilgisayarınızda gerçekleşir
-
-İnternet sadece ilk model indirme için gerekir
-
-Hiçbir veri dışarı gönderilmez
-
-
-
----
-
-🔜 Geliştirme Fikirleri
-
-📌 Sayfa numarasıyla cevap
-
-🖥️ GUI (masaüstü arayüz)
-
-🌐 Web arayüz
-
-📄 Farklı PDF’ler ekleme
-
-🧠 Daha büyük local modeller
-
-
-
----
-
-🧑‍💻 Lisans
-
-Bu proje eğitim ve kişisel kullanım içindir.
-Nutuk eseri, telif durumuna göre kullanıcı sorumluluğundadır.
+- `OLLAMA_URL`: Ollama API adresi (Varsayılan: `http://127.0.0.1:11434/api/generate`)
+- `MODEL_NAME`: Kullanılan LLM modeli (Varsayılan: `RefinedNeuro/RN_TR_R2:latest`)
+- `API_KEY`: Basit API anahtarı koruması (Varsayılan: `test`)
+- `SYSTEM_PROMPT`: AI'ın kişiliğini belirleyen sistem mesajı.

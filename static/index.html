@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Niko AI Asistan</title>
+    <link rel="stylesheet" href="static/style.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Fira+Code&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  </head>
+  <body>
+    <div id="app-container">
+      <header>
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="status-dot"></div>
+          <h1>Niko AI Asistan</h1>
+        </div>
+
+      </header>
+
+      <div class="main-content">
+
+        <div id="chat-history">
+          <!-- Messages will be appended here by script.js -->
+
+          <!-- Typing Indicator (Initially Hidden) -->
+          <div id="typing-indicator" class="typing-indicator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <textarea
+          id="message-input"
+          placeholder="Bir şeyler sorun..."
+          rows="1"
+        ></textarea>
+        <button id="send-btn" aria-label="Gönder">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Script -->
+    <script src="static/script.js?v=2"></script>
+  </body>
+</html>
