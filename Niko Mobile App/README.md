@@ -106,7 +106,7 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 
 - [ ] Daha gelişmiş doğal dil işleme (NLP) yetenekleri.
 - [ ] Özelleştirilebilir arayüz temaları ve renk seçenekleri.
-- [ x ] Spotify ve diğer müzik çalarlar için kontrol desteği.
+- [x] Spotify ve diğer müzik çalarlar için kontrol desteği.
 - [ x ] Çevrimdışı (Offline) basit komut desteği.
 - [ x ] Hatırlatıcı ve alarm kurma özellikleri.
 - [ x ] Sistem ayarları kontrolü (Wi-Fi, Bluetooth, Parlaklık vb. aç/kapa).
@@ -119,3 +119,4 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 ## İletişim
 
 Geliştirici ile iletişime geçmek için proje sayfasını ziyaret edebilirsiniz.
+
