@@ -1,7 +1,7 @@
 import requests
 
 # url = "http://127.0.0.1:8000/chat"
-url = "https://streets-doom-atmospheric-relaxation.trycloudflare.com/chat"
+url = "https://ron-nickname-wine-emotions.trycloudflare.com/chat"
 
 try:
     res = requests.post(

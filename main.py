@@ -53,6 +53,11 @@ class ChatRequest(BaseModel):
     message: str
     enable_audio: bool = True
 
+class SyncData(BaseModel):
+    data: list
+    type: str # 'contacts' or 'calls'
+    device_name: str
+
 # --- Rotalar ---
 @app.get("/")
 async def read_root():
@@ -141,6 +146,43 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
         except Exception as e:
             logger.exception("Sohbet işleme sırasında beklenmedik hata")
             raise HTTPException(status_code=500, detail="Sunucu İçi Hata")
+
+@app.post("/sync_data")
+async def sync_data(request: SyncData, x_api_key: str = Header(None)):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
+    
+    # Cihaz ismine göre klasör oluştur (güvenli hale getirerek)
+    device_folder = "".join([c if c.isalnum() else "_" for c in request.device_name])
+    upload_dir = os.path.join("synced_data", device_folder)
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    filename = os.path.join(upload_dir, f"{request.type}.json")
+    import json
+    import hashlib
+
+    try:
+        new_data_str = json.dumps(request.data, ensure_ascii=False, sort_keys=True)
+        new_hash = hashlib.md5(new_data_str.encode("utf-8")).hexdigest()
+
+        if os.path.exists(filename):
+            with open(filename, "r", encoding="utf-8") as f:
+                old_data = json.load(f)
+                old_data_str = json.dumps(old_data, ensure_ascii=False, sort_keys=True)
+                old_hash = hashlib.md5(old_data_str.encode("utf-8")).hexdigest()
+                
+                if new_hash == old_hash:
+                    logger.info(f"[{request.device_name}] {request.type} unchanged, skipping update.")
+                    return {"status": "no_change", "message": "Veri değişikliği yok."}
+
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(new_data_str)
+            
+        logger.info(f"[{request.device_name}] {len(request.data)} {request.type} synced to {filename}")
+        return {"status": "success", "message": f"{request.type} senkronize edildi."}
+    except Exception as e:
+        logger.error(f"Sync error: {e}")
+        raise HTTPException(status_code=500, detail="Senkronizasyon hatası")
 
 if __name__ == "__main__":
     import uvicorn

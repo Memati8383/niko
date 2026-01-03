@@ -27,6 +27,50 @@ Niko'yu kullanmaya başlamak ve onunla etkileşime geçmek oldukça doğaldır:
     - _"Atatürk kaç yılında doğmuştur?"_
 4.  **Geri Bildirim:** Niko, talebinizi işledikten sonra hem sesli olarak yanıt verir hem de görsel animasyonlarla etkileşimi sürdürür.
 
+## Kullanılabilir Komutlar
+
+Niko aşağıdaki sesli komutları anlayabilir ve yerine getirebilir:
+
+### 👤 Kimlik ve Sohbet
+
+- **Tanışma:** "Adın ne?", "Kimsin?", "Kendini tanıt"
+
+### 📞 Arama ve İletişim
+
+- **Arama:** "[İsim] ara" (Örn: "Ahmet'i ara")
+- **Son Çağrılar:** "Son gelen", "Son aranan"
+- **WhatsApp:**
+  - "Whatsapp oku" (Son mesajı okur)
+  - "Whatsapp cevap" (Otomatik yanıt verir)
+
+### 📅 Zaman ve Tarih
+
+- **Saat:** "Saat kaç?", "Saati söyle"
+- **Tarih:** "Tarih", "Bugün günlerden ne", "Hangi gündeyiz"
+
+### 🛠 Araçlar ve Sistem
+
+- **Kamera:** "Kamera aç", "Fotoğraf çek"
+- **Ayarlar:** "Ayarları aç"
+- **Wi-Fi:** "Wifi aç", "İnterneti kapat"
+- **Bluetooth:** "Bluetooth aç", "Bluetooth kapat"
+- **Parlaklık:** "Parlaklığı arttır", "Işığı kıs"
+
+### 🎵 Medya ve Müzik (Spotify vb.)
+
+- **Oynatma:** "Müziği başlat", "Şarkıyı oynat", "Spotify aç"
+- **Durdurma:** "Müziği durdur", "Şarkıyı kapat"
+- **Değiştirme:** "Sonraki şarkı", "Önceki şarkı", "Şarkıyı geç"
+
+### ⏰ Alarm ve Hatırlatıcı
+
+- **Alarm:**
+  - "10 dakika sonra alarm"
+  - "Sabah 7'ye alarm kur"
+- **Hatırlatıcı:**
+  - "Yarın hatırlat"
+  - "Akşam 8'de hatırlat"
+
 ## Kullanılan Teknolojiler
 
 - Java (Android Native)
@@ -62,11 +106,11 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 
 - [ ] Daha gelişmiş doğal dil işleme (NLP) yetenekleri.
 - [ ] Özelleştirilebilir arayüz temaları ve renk seçenekleri.
-- [ ] Spotify ve diğer müzik çalarlar için kontrol desteği.
-- [ ] Çevrimdışı (Offline) basit komut desteği.
-- [ ] Hatırlatıcı ve alarm kurma özellikleri.
+- [ x ] Spotify ve diğer müzik çalarlar için kontrol desteği.
+- [ x ] Çevrimdışı (Offline) basit komut desteği.
+- [ x ] Hatırlatıcı ve alarm kurma özellikleri.
+- [ x ] Sistem ayarları kontrolü (Wi-Fi, Bluetooth, Parlaklık vb. aç/kapa).
 - [ ] Çoklu dil desteği (İngilizce, Almanca vb.).
-- [ ] Google Takvim ve Outlook entegrasyonu.
 - [ ] Hava durumu ve güncel haberler için sesli özet.
 - [ ] Sohbet Geçmişi.
 - [ ] Chat arayüzü.
