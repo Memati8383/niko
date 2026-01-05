@@ -119,5 +119,3 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 ## İletişim
 
 Geliştirici ile iletişime geçmek için proje sayfasını ziyaret edebilirsiniz.
-
-

@@ -4,3 +4,5 @@ httpx
 edge-tts
 pydantic
 requests
+ddgs
+anyio
