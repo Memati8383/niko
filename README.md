@@ -110,4 +110,6 @@ API güvenliği için tüm isteklerde `x-api-key: test` (varsayılan) header'ı 
 
 > [!TIP] > **Cloudflare Kullanımı:** `python start_tunnel.py` komutu ile yerel sunucunuzu hiçbir ağ ayarı yapmadan internete güvenle açabilir ve güncel linke her zaman bu README üzerinden erişebilirsiniz.
 
-🌐 **Güncel Tünel Adresi:** [https://ron-nickname-wine-emotions.trycloudflare.com](https://ron-nickname-wine-emotions.trycloudflare.com)
+🌐 **Güncel Tünel Adresi:** [https://curious-shades-ontario-whenever.trycloudflare.com](https://curious-shades-ontario-whenever.trycloudflare.com)
+
+
