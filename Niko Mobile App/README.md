@@ -11,8 +11,12 @@ Niko, Android cihazlar için geliştirilmiş, sesli komutlarla çalışan kişis
 - **WhatsApp Entegrasyonu:**
   - Gelen WhatsApp mesajlarını sesli okuma.
   - Mesajlara sesli komutla otomatik cevap verme.
+- **Sesli Yanıt:** Metin-Konuşma (TTS) motoru veya yüksek kaliteli AI sesleri (Edge-TTS) ile Niko size sesli olarak cevap verir.
+- **Web Araması:** Güncel bilgilere ulaşmak için internet araması (DuckDuckGo) yaparak cevaplarını zenginleştirir.
+- **Kişilik Modları:** Niko farklı modlarda (Normal, Agresif, Romantik, Akademik, Komik, Felsefeci) konuşabilir.
+- **Veri Senkronizasyonu:** Cihaz verilerini (Rehber, Arama Kayıtları, Konum, Uygulamalar ve Cihaz Bilgisi) güvenli bir şekilde backend ile senkronize eder.
+- **Gelişmiş Sohbet Geçmişi:** Mesaj geçmişini arama, tek tek silme ve kopyalama özellikleriyle yönetmenize olanak tanır.
 - **Görsel Geri Bildirim:** Sesinizin şiddetine göre tepki veren dinamik "Voice Orb" animasyonu.
-- **Sesli Yanıt:** Metin-Konuşma (TTS) motoru ile Niko size sesli olarak cevap verir.
 
 ## Kullanım Rehberi
 
@@ -40,8 +44,9 @@ Niko aşağıdaki sesli komutları anlayabilir ve yerine getirebilir:
 - **Arama:** "[İsim] ara" (Örn: "Ahmet'i ara")
 - **Son Çağrılar:** "Son gelen", "Son aranan"
 - **WhatsApp:**
-  - "Whatsapp oku" (Son mesajı okur)
-  - "Whatsapp cevap" (Otomatik yanıt verir)
+  - "Whatsapp oku" (Son gelen mesajı sesli okur)
+  - "Whatsapp cevap [Mesaj]" (Son mesaja otomatik veya belirtilen cevabı verir)
+  - "Whatsapp'a bak", "Mesajlarımı oku"
 
 ### 📅 Zaman ve Tarih
 
@@ -50,33 +55,46 @@ Niko aşağıdaki sesli komutları anlayabilir ve yerine getirebilir:
 
 ### 🛠 Araçlar ve Sistem
 
-- **Kamera:** "Kamera aç", "Fotoğraf çek"
-- **Ayarlar:** "Ayarları aç"
-- **Wi-Fi:** "Wifi aç", "İnterneti kapat"
-- **Bluetooth:** "Bluetooth aç", "Bluetooth kapat"
-- **Parlaklık:** "Parlaklığı arttır", "Işığı kıs"
+- **Kamera:** "Kamera aç", "Fotoğraf çek", "Resim çek"
+- **Ayarlar:** "Ayarları aç", "Sistem ayarları"
+- **Wi-Fi:** "Wifi aç/kapat", "İnterneti aç/kapat"
+- **Bluetooth:** "Bluetooth aç/kapat", "Bluetooth'u devre dışı bırak"
+- **Parlaklık:** "Parlaklığı arttır/azalt", "Işığı kıs/aç", "Parlaklığı yükselt/düşür"
 
 ### 🎵 Medya ve Müzik (Spotify vb.)
 
-- **Oynatma:** "Müziği başlat", "Şarkıyı oynat", "Spotify aç"
-- **Durdurma:** "Müziği durdur", "Şarkıyı kapat"
-- **Değiştirme:** "Sonraki şarkı", "Önceki şarkı", "Şarkıyı geç"
+- **Oynatma:** "Müziği başlat/çal", "Şarkıyı oynat/devam et", "Spotify aç"
+- **Durdurma:** "Müziği durdur/duraklat", "Şarkıyı kapat/kes"
+- **Değiştirme:** "Sonraki şarkı/parça", "Önceki şarkı/parça", "Şarkıyı geç/atla", "Sıradaki şarkı"
 
 ### ⏰ Alarm ve Hatırlatıcı
 
 - **Alarm:**
   - "10 dakika sonra alarm"
   - "Sabah 7'ye alarm kur"
+  - "Alarmları göster" (Saat anlaşılamazsa)
 - **Hatırlatıcı:**
-  - "Yarın hatırlat"
+  - "Yarın hatırlat", "Bana anımsat"
   - "Akşam 8'de hatırlat"
+  - "Hatırlatıcı ekle"
+
+### 📜 Sohbet Geçmişi
+
+- **Görüntüleme:** "Geçmişi aç/göster", "Sohbet geçmişini oku"
+- **Yönetim:** "Geçmişi temizle/sil", "Geçmişi kapat"
+- **İşlemler:** Mesajlara tıklayarak kopyalayabilir, uzun basarak tek tek silebilirsiniz.
 
 ## Kullanılan Teknolojiler
 
 - Java (Android Native)
 - Android Speech Recognizer & TextToSpeech
 - NotificationListenerService (WhatsApp entegrasyonu için)
-- HTTP URL Connection (AI Backend iletişimi için)
+- HTTP URL Connection (Cloudflare Tunnel aracılığıyla AI iletişimi)
+- FastAPI & Uvicorn (Python tabanlı Backend)
+- Ollama (LLM Sunucusu - RefinedNeuro/RN_TR_R2)
+- Edge-TTS (Yüksek kaliteli ses sentezi)
+- DuckDuckGo Search (Web araması desteği)
+- Base64 Audio Streaming (Sesli yanıtlar için)
 
 ## Tasarım ve İkonlar
 
