@@ -4,5 +4,10 @@ httpx
 edge-tts
 pydantic
 requests
-ddgs
+duckduckgo-search
 anyio
+chromadb
+pypdf
+tqdm
+ollama
+python-dotenv

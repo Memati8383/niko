@@ -10,7 +10,7 @@ import hashlib
 from datetime import datetime
 from typing import Optional, List
 
-from prompts import MODE_PROMPTS
+from prompts import MODE_PROMPTS, AUGMENTATION_PROMPTS
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
@@ -21,6 +21,11 @@ from pydantic import BaseModel
 import edge_tts
 import anyio
 from ddgs import DDGS
+try:
+    import chromadb
+    HAS_CHROMADB = True
+except ImportError:
+    HAS_CHROMADB = False
 
 # --- Yapılandırma ve Loglama ---
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -34,6 +39,28 @@ VOICE_NAME = "tr-TR-AhmetNeural"
 
 # Varsayılan sistem mesajı (prompts.py'dan)
 SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", MODE_PROMPTS["normal"])
+
+# --- RAG Yapılandırması ---
+RAG_DB_PATH = os.path.abspath("rag/database")
+RAG_COLLECTION_NAME = "medical_kb"
+EMBED_MODEL = "nomic-embed-text"
+rag_collection = None
+
+if HAS_CHROMADB:
+    try:
+        # Veritabanı dizini yoksa oluştur (boş da olsa başlasın)
+        if not os.path.exists(RAG_DB_PATH):
+            os.makedirs(RAG_DB_PATH, exist_ok=True)
+            logger.info(f"RAG dizini oluşturuldu: {RAG_DB_PATH}")
+            
+        client = chromadb.PersistentClient(path=RAG_DB_PATH)
+        # get_or_create_collection hata almamızı engeller
+        rag_collection = client.get_or_create_collection(name=RAG_COLLECTION_NAME)
+        logger.info(f"RAG Koleksiyonu bağlandı: {RAG_COLLECTION_NAME}")
+    except Exception as e:
+        logger.error(f"RAG başlatma hatası: {e}")
+else:
+    logger.warning("chromadb kütüphanesi yüklü değil, RAG devre dışı.")
 
 app = FastAPI(title="AI Sohbet Arka Ucu", version="1.0.0")
 
@@ -57,9 +84,10 @@ class ChatRequest(BaseModel):
     message: str
     enable_audio: bool = True
     web_search: bool = False
+    rag_search: bool = False
     session_id: Optional[str] = None
     model: Optional[str] = None
-    mode: Optional[str] = "normal"  # Mod seçimi (normal, agresif, romantik, akademik, komik, felsefeci)
+    mode: Optional[str] = "normal"  # Mod seçimi (normal, rag, agresif, bilge, vb.)
 
 class SyncData(BaseModel):
     data: list
@@ -131,6 +159,69 @@ async def search_web(query: str, max_results: int = 5) -> str:
         logger.exception(f"Arama fonksiyonunda kritik hata: {e}")
         return "Web araması sırasında sistem hatası oluştu."
 
+async def search_rag(query: str, limit: int = 5, threshold: float = 0.6) -> str:
+    """
+    RAG veritabanında arama yapar, skor filtrelemesi uygular ve kaynakları içeren döküman parçalarını döner.
+    """
+    if not rag_collection:
+        logger.warning("RAG koleksiyonu yüklü değil, arama yapılamıyor.")
+        return ""
+
+    try:
+        logger.info(f"RAG araması başlatılıyor ('{query}')")
+        
+        # Ollama üzerinden embedding al
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            embed_url = OLLAMA_URL.replace("/generate", "/embeddings")
+            try:
+                resp = await client.post(embed_url, json={"model": EMBED_MODEL, "prompt": query})
+                resp.raise_for_status()
+                embedding = resp.json()["embedding"]
+            except Exception as e:
+                logger.error(f"Embedding alınırken hata oluştu: {e}")
+                return ""
+
+        # ChromaDB'de sorgula (mesafeleri de alalım)
+        results = rag_collection.query(
+            query_embeddings=[embedding],
+            n_results=limit,
+            include=["documents", "metadatas", "distances"]
+        )
+
+        if not results or not results['documents'] or not results['documents'][0]:
+            logger.info("RAG için eşleşen döküman bulunamadı.")
+            return ""
+
+        relevant_chunks = []
+        for i in range(len(results['documents'][0])):
+            doc = results['documents'][0][i]
+            meta = results['metadatas'][0][i] if results['metadatas'] else {}
+            dist = results['distances'][0][i] if results['distances'] else 1.0 # Mesafe ne kadar küçükse o kadar benzer
+            
+            # Mesafe kontrolü (L2 mesafesi için düşük değer = yüksek benzerlik)
+            # ChromaDB cosine sim de kullanabilir, mesafeye göre filtreleyelim.
+            # 1.0 genelde çok uzaktır, 0.4-0.7 arası iyidir.
+            if dist > (1.0 - threshold): 
+                logger.debug(f"Parça {i} eşik değerini aşamadı (Dist: {dist:.4f})")
+                continue
+
+            source = meta.get("source", "Bilinmeyen Kaynak")
+            page = meta.get("page", "-")
+            
+            chunk_text = f"[KAYNAK: {source} | SAYFA: {page} | SKOR: {1-dist:.2f}]\n{doc}"
+            relevant_chunks.append(chunk_text)
+
+        if not relevant_chunks:
+            logger.info("Filtreleme sonrası uygun RAG parçası kalmadı.")
+            return ""
+
+        context = "\n\n---\n\n".join(relevant_chunks)
+        logger.info(f"RAG araması tamamlandı. {len(relevant_chunks)} döküman parçası bağlama eklendi.")
+        return context
+    except Exception as e:
+        logger.error(f"RAG arama sürecinde kritik hata: {e}")
+        return ""
+
 @app.post("/chat")
 async def chat(request: ChatRequest, x_api_key: str = Header(None)):
     """
@@ -174,22 +265,42 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
 
     user_message = request.message
     
+    # RAG ve Web Arama Entegrasyonu
+    active_context = ""
+    selected_mode = request.mode if request.mode in MODE_PROMPTS else "normal"
+
+    # Web araması istenmişse onu da ekle (Toggle bazlı)
+    sources_metadata = []
     if request.web_search:
-        logger.info(f"Yapay zeka için web desteği aktif: {user_message}")
+        logger.info(f"Web desteği aktif: {user_message}")
         search_results = await search_web(user_message)
+        if search_results:
+            active_context += AUGMENTATION_PROMPTS["web_prefix"].format(context=search_results)
+            sources_metadata.append({"type": "web", "content": search_results})
+    
+    # RAG Aktivasyonu (Toggle veya Mod bazlı)
+    if request.rag_search or selected_mode == "rag":
+        logger.info(f"RAG desteği aktif: {user_message}")
+        rag_context = await search_rag(user_message)
+        if rag_context:
+            active_context += AUGMENTATION_PROMPTS["rag_prefix"].format(context=rag_context)
+            sources_metadata.append({"type": "rag", "content": rag_context})
+
+    if active_context:
         context_prefix = (
-            "İnternet verileri:\n"
-            f"{search_results}\n"
-            "TALİMAT: Önceki konuşmaları ve bu verileri sentezle.\n"
+            f"{active_context}"
+            "TALİMAT: Yukarıdaki bağlam verilerini kullanarak soruyu cevapla. "
+            "ÖNEMLİ: Analiz sürecini, hangi bağlamı kullandığını ve düşüncelerini MUTLAKA <think>...</think> blokları içine yaz. "
+            "Bu blok dışında SADECE kullanıcıya yönelik nihai cevabı ver.\n"
         )
         payload_prompt = f"{context_prefix}{full_prompt}{user_message}"
     else:
+        # Eğer normal moddaysa ama bağlam yoksa otomatik RAG kontrolünü kaldırıyoruz (artık isteğe bağlı)
         payload_prompt = f"{full_prompt}{user_message}"
 
     async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             # Seçilen moda göre SYSTEM_PROMPT belirle
-            selected_mode = request.mode if request.mode in MODE_PROMPTS else "normal"
             active_system_prompt = MODE_PROMPTS.get(selected_mode, SYSTEM_PROMPT)
             
             payload = {
@@ -221,27 +332,40 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
                 if think_fallback_match:
                     thought_content = think_fallback_match.group(1).strip()
                     clean_content = raw_content.replace(think_fallback_match.group(0), "").strip()
+                else:
+                    # 3. Durum: Hiç <think> bloğu yok - Varsayılan düşünce oluştur
+                    logger.warning("Model <think> bloğu oluşturmadı, varsayılan düşünce ekleniyor.")
+                    thought_content = (
+                        f"Kullanıcının sorusu: {user_message[:100]}...\n\n"
+                        f"Bağlam Durumu: {'RAG veritabanından bilgi alındı' if selected_mode == 'normal' and active_context else 'Genel bilgi kullanıldı'}\n\n"
+                        "Analiz: Model bu soru için düşünme sürecini paylaşmadı. "
+                        "Cevap doğrudan üretildi."
+                    )
 
-            # \boxed{...} temizle - İçeriği çıkar
-            boxed_match = re.search(r'\\boxed\{(.*)\}', clean_content, flags=re.DOTALL)
-            if boxed_match:
-                clean_content = boxed_match.group(1).strip()
-
+            # \boxed{...} temizle - İçeriği çıkar (Global temizlik)
+            clean_content = re.sub(r'\\boxed\{(.*?)\}', r'\1', clean_content, flags=re.DOTALL)
+            
+            # --- AGRESİF ARTIK TEMİZLİĞİ ---
+            # Modelin bazen metnin başına eklediği LaTeX veya Markdown kalıntılarını temizle
+            clean_content = re.sub(r'^[\\\[\]\s]+', '', clean_content) # Baştaki \, [, ], ve boşlukları temizle
+            clean_content = clean_content.replace('\\(', '').replace('\\)', '').replace('\\[', '').replace('\\]', '')
+            
             # --- DÜŞÜNME ADIMLARINI TEMİZLE (Regex Filtresi) ---
             # "Adım 1:", "**Adım 1:**", "1. Adım:", "Sonuç olarak:", "Özetle:" gibi kalıpları temizler
-            # Modelin kullanıcıya sunduğu 'clean_content' içindeki yapısal düşünme ifadelerini ayıklar
             patterns_re_to_remove = [
                 r'(?i)^\s*Adım\s*\d+\s*:.*?\n',       # Adım 1: ... (Satır başı)
                 r'(?i)^\s*\d+\.\s*Adım\s*:.*?\n',     # 1. Adım: ...
                 r'(?i)\*\*Adım\s*\d+\s*:\*\*.*?\n',    # **Adım 1:** ...
-                r'(?i)Sonuç olarak\s*[:,]\s*',        # Sonuç olarak:
-                r'(?i)Özetle\s*[:,]\s*',              # Özetle:
+                r'(?i)Sonuç olarak\s*[:]\s*',         # Sonuç olarak:
+                r'(?i)Özetle\s*[:]\s*',               # Özetle:
+                r'(?i)^Yanıt:\s*',                    # Mesaj başındaki Yanıt: ifadesi
             ]
             
             for pattern in patterns_re_to_remove:
                 clean_content = re.sub(pattern, '', clean_content, flags=re.MULTILINE).strip()
 
-            # Eğer temizlik sonrası metnin başında hala kalıntılar varsa (örn: boşluklar) temizle
+            # Ardışık boş satırları temizle
+            clean_content = re.sub(r'\n{3,}', '\n\n', clean_content)
             clean_content = clean_content.strip()
             
             # --- SES ÜRETİMİ (EDGE-TTS) ---
@@ -285,7 +409,14 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
                 json.dump(history_data, f, ensure_ascii=False, indent=2)
             
             logger.info(f"Sohbet yanıtı tamamlandı. Oturum: {session_id}, Yanıt Boyutu: {len(clean_content)} karakter, Ses: {'Var' if audio_base64 else 'Yok'}")
-            return {"reply": clean_content, "thought": thought_content, "audio": audio_base64, "id": session_id, "title": current_title}
+            return {
+                "reply": clean_content, 
+                "thought": thought_content, 
+                "audio": audio_base64, 
+                "id": session_id, 
+                "title": current_title,
+                "sources": sources_metadata
+            }
 
         except httpx.ConnectError:
             logger.error("Ollama'ya bağlanılamadı.")
@@ -394,6 +525,89 @@ async def clear_all_history(x_api_key: str = Header(None)):
                 logger.error(f"Error deleting file {file_path}: {e}")
     
     return {"status": "success", "message": "Tüm geçmiş temizlendi."}
+
+@app.get("/export/{session_id}")
+async def export_chat(session_id: str, x_api_key: str = Header(None)):
+    """
+    Belirtilen sohbet oturumunu Markdown formatında dışa aktarır.
+    """
+    start_time = datetime.now()
+    logger.info(f"Sohbet dışa aktarma isteği: {session_id}")
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
+    
+    history_file = os.path.join("history", f"{session_id}.json")
+    if not os.path.exists(history_file):
+        logger.warning(f"Dışa aktarma başarısız - Sohbet bulunamadı: {session_id}")
+        raise HTTPException(status_code=404, detail="Sohbet bulunamadı")
+    
+    try:
+        with open(history_file, "r", encoding="utf-8") as f:
+            hist_data = json.load(f)
+        
+        # Markdown içeriği oluştur
+        title = hist_data.get("title", "Sohbet")
+        timestamp = hist_data.get("timestamp", "")
+        messages = hist_data.get("messages", [])
+        
+        markdown_content = f"# {title}\n\n"
+        markdown_content += f"**Tarih:** {datetime.fromisoformat(timestamp).strftime('%d.%m.%Y %H:%M') if timestamp else 'Bilinmiyor'}\n\n"
+        markdown_content += "---\n\n"
+        
+        for msg in messages:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            thought = msg.get("thought", "")
+            msg_time = msg.get("timestamp", "")
+            
+            if role == "user":
+                markdown_content += f"### 👤 Kullanıcı\n"
+                if msg_time:
+                    markdown_content += f"*{datetime.fromisoformat(msg_time).strftime('%H:%M')}*\n\n"
+                markdown_content += f"{content}\n\n"
+            elif role == "bot":
+                markdown_content += f"### 🤖 Asistan\n"
+                if msg_time:
+                    markdown_content += f"*{datetime.fromisoformat(msg_time).strftime('%H:%M')}*\n\n"
+                
+                if thought:
+                    markdown_content += f"<details>\n<summary>💭 Düşünce Süreci</summary>\n\n{thought}\n\n</details>\n\n"
+                
+                markdown_content += f"{content}\n\n"
+            
+            markdown_content += "---\n\n"
+        
+        
+        # Dosyayı geçici olarak oluştur ve döndür
+        from fastapi.responses import Response
+        import urllib.parse
+        
+        # Türkçe karakterleri ASCII'ye çevir (dosya adı için)
+        safe_filename = "".join([c if c.isalnum() or c in (' ', '-', '_') else '_' for c in title])
+        # Boşlukları da alt çizgiye çevir
+        safe_filename = safe_filename.replace(' ', '_')
+        filename = f"{safe_filename}_{session_id[:8]}.md"
+        
+        # Content'i UTF-8 bytes'a çevir
+        content_bytes = markdown_content.encode('utf-8')
+        
+        # Performance logging
+        duration = (datetime.now() - start_time).total_seconds()
+        file_size_kb = len(content_bytes) / 1024
+        logger.info(f"Dışa aktarma başarılı - Session: {session_id}, Boyut: {file_size_kb:.2f}KB, Süre: {duration:.3f}s")
+        
+        return Response(
+            content=content_bytes,
+            media_type="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Dışa aktarma hatası ({session_id}): {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Dışa aktarma sırasında hata oluştu")
+
 
 @app.get("/models")
 async def list_models(x_api_key: str = Header(None)):
