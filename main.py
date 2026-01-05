@@ -75,6 +75,7 @@ class ChatHistoryItem(BaseModel):
 # --- Rotalar ---
 @app.get("/")
 async def read_root():
+    logger.info("Ana sayfa erişimi (root endpoint)")
     if os.path.exists("static/index.html"):
         return FileResponse('static/index.html')
     return {"message": "API çalışıyor. Statik dosyalar bulunamadı."}
@@ -113,6 +114,8 @@ async def search_web(query: str, max_results: int = 5) -> str:
             logger.warning(f"Arama için sonuç bulunamadı: {query}")
             return "İnternet üzerinde bu konuda güncel bir bilgiye ulaşılamadı."
 
+        logger.info(f"Web araması tamamlandı. {len(results)} sonuç bulundu.")
+
         # Sonuçları LLM için optimize edilmiş bir formatta birleştir
         current_time = datetime.now().strftime("%d %B %Y %H:%M")
         output = f"Bilgi Kaynağı: İnternet Araması (DuckDuckGo)\nSorgu Zamanı: {current_time}\n\n"
@@ -134,6 +137,8 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
     Yapılandırılmış Ollama modeli ile bir sohbet mesajını işler ve ses dosyasını base64 olarak döner.
     Gerektiğinde web araması sonuçlarını context olarak ekler.
     """
+    logger.info(f"Yeni sohbet isteği - Mod: {request.mode}, Web Arama: {request.web_search}")
+    
     if x_api_key != API_KEY:
         logger.warning(f"Yetkisiz erişim denemesi, anahtar: {x_api_key}")
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
@@ -154,8 +159,9 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
                 hist_data = json.load(f)
                 chat_history = hist_data.get("messages", [])
                 current_title = hist_data.get("title", current_title)
+                logger.info(f"Oturum geçmişi yüklendi: {session_id} ({len(chat_history)} mesaj)")
         except Exception as e:
-            logger.error(f"Geçmiş okuma hatası: {e}")
+            logger.error(f"Geçmiş okuma hatası ({session_id}): {e}")
 
     # AI için prompt oluştur (Geçmiş + Yeni Mesaj)
     full_prompt = ""
@@ -277,7 +283,8 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
             
             with open(history_file, "w", encoding="utf-8") as f:
                 json.dump(history_data, f, ensure_ascii=False, indent=2)
-
+            
+            logger.info(f"Sohbet yanıtı tamamlandı. Oturum: {session_id}, Yanıt Boyutu: {len(clean_content)} karakter, Ses: {'Var' if audio_base64 else 'Yok'}")
             return {"reply": clean_content, "thought": thought_content, "audio": audio_base64, "id": session_id, "title": current_title}
 
         except httpx.ConnectError:
@@ -292,6 +299,7 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
 
 @app.post("/sync_data")
 async def sync_data(request: SyncData, x_api_key: str = Header(None)):
+    logger.info(f"Veri senkronizasyonu isteği - Cihaz: {request.device_name}, Tip: {request.type}")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
     
@@ -328,6 +336,7 @@ async def sync_data(request: SyncData, x_api_key: str = Header(None)):
 
 @app.get("/history")
 async def get_history(x_api_key: str = Header(None)):
+    logger.info("Tüm sohbet geçmişi istendi")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
     
@@ -357,6 +366,7 @@ async def get_history(x_api_key: str = Header(None)):
 
 @app.delete("/history/{session_id}")
 async def delete_history_item(session_id: str, x_api_key: str = Header(None)):
+    logger.info(f"Sohbet oturumu silme isteği: {session_id}")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
     
@@ -369,6 +379,7 @@ async def delete_history_item(session_id: str, x_api_key: str = Header(None)):
 
 @app.delete("/history")
 async def clear_all_history(x_api_key: str = Header(None)):
+    logger.info("TÜM sohbet geçmişini temizleme isteği")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
     
@@ -386,6 +397,7 @@ async def clear_all_history(x_api_key: str = Header(None)):
 
 @app.get("/models")
 async def list_models(x_api_key: str = Header(None)):
+    logger.info("Ollama modelleri listeleniyor")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
     

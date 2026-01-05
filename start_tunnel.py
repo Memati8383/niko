@@ -24,7 +24,10 @@ def update_readme(url):
                 f.writelines(new_lines)
             print(f"\n[+] README.md güncellendi: {url}")
         else:
-            print("\n[!] README.md içinde güncellenecek satır bulunamadı.")
+            # Satır bulunamadıysa dosyanın sonuna ekle
+            with open(readme_path, "a", encoding="utf-8") as f:
+                f.write(f"\n> 🌐 **Güncel Tünel Adresi:** [{url}]({url})\n")
+            print(f"\n[+] README.md sonuna yeni adres eklendi: {url}")
             
     except Exception as e:
         print(f"\n[!] Dosya güncelleme hatası: {e}")

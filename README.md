@@ -1,4 +1,4 @@
-# 🤖 Niko AI Asistan
+# 🤖 Niko AI Asistant
 
 **Niko**, FastAPI tabanlı güçlü bir arka uç ve modern bir web arayüzü ile çalışan, Ollama destekli, yerel ve gizlilik odaklı bir yapay zeka asistanıdır.
 
@@ -6,11 +6,12 @@
 
 ## 🚀 Öne Çıkan Özellikler
 
-- **🧠 Düşünce Süreci Görüntüleme:** Modelin akıl yürütme adımlarını (DeepSeek vb.) kullanıcı arayüzünde şeffaf bir şekilde görebilme.
+- **🎭 Çoklu Kişilik (Modlar):** 8 farklı karakter modu (Agresif, Bilge, Dahi, Romantik vb.) ile farklı kullanım senaryoları.
+- **🧠 Düşünce Süreci Görüntüleme:** Modelin akıl yürütme adımlarını (RefinedNeuro/RN_TR_R2:latest vb.) kullanıcı arayüzünde şeffaf bir şekilde görebilme.
 - **🌐 Gerçek Zamanlı Web Araması:** Güncel bilgilere erişmek için DuckDuckGo entegrasyonu ile internette arama yapabilme.
 - **💾 Gelişmiş Sohbet Geçmişi:** Sohbetleri yerel olarak JSON formatında saklama, geri yükleme ve yönetme (CRUD desteği).
 - **🎙️ Sesli Yanıt (TTS):** Microsoft Edge TTS teknolojisi ile doğal ve akıcı Türkçe ses sentezleme.
-- ** Premium UI/UX:** Glassmorphism (cam efekti) tasarımı, karanlık mod desteği, responsive yapı ve gelişmiş Markdown render.
+- **💎 Premium UI/UX:** Glassmorphism tasarımı, karanlık mod, responsive yapı ve gelişmiş Markdown render.
 - **💻 Kod Analizi:** Syntax highlighting (highlight.js) ile kod bloklarını şık ve okunabilir formatta görüntüleme.
 
 ---
@@ -19,46 +20,33 @@
 
 ```text
 ├── main.py              # FastAPI Arka Uç (API & Mantık)
+├── prompts.py           # AI Karakter Modları ve Sistem Mesajları
 ├── start_tunnel.py      # Cloudflare Tunnel otomasyon scripti
 ├── history/             # Sohbet geçmişlerinin saklandığı klasör (JSON)
 ├── static/              # Web Ön Yüz Dosyaları
 │   ├── index.html       # Ana Arayüz
 │   ├── style.css        # Gelişmiş CSS (Glassmorphism & Animasyonlar)
 │   └── script.js        # Dinamik Ön Yüz Mantığı
+├── Niko Mobile App/     # Android Uygulama Kaynak Kodları (Java/Android)
 └── requirements.txt     # Bağımlılıklar
 ```
 
 ---
 
-## 🛠️ Kurulum ve Başlatma
+## 🎭 Niko'nun Modları (Personalities)
 
-### 1. Sistem Gereksinimleri
+Niko, ruh halinize veya ihtiyacınıza göre farklı kimliklere bürünebilir:
 
-- Python 3.8+
-- [Ollama](https://ollama.ai/) (Yerel LLM sunucusu)
-- **Tavsiye Edilen Model:** `RefinedNeuro/RN_TR_R2:latest` veya `deepseek-v3`
-
-### 2. Kurulum
-
-Gerekli paketleri çalışma dizininde yükleyin:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Çalıştırma
-
-Önce Ollama'yı, ardından servisi başlatın:
-
-```bash
-# Ollama'yı başlatın
-ollama serve
-
-# Niko'yu başlatın
-python main.py
-```
-
-Arayüze erişin: `http://localhost:8000`
+| Mod           | Karakter Özelliği               | Kullanım Amacı                                |
+| :------------ | :------------------------------ | :-------------------------------------------- |
+| **Normal**    | Yardımsever & Profesyonel       | Günlük asistanlık görevleri.                  |
+| **Agresif**   | Sözel Cellat (Hakaret İçerikli) | Eğlence veya stres atma (Dikkatli Kullanın).  |
+| **Bilge**     | Sakin & Felsefeci               | Hayat üzerine derin sohbetler ve tavsiyeler.  |
+| **Dahi**      | Analitik & Teknik               | Karmaşık matematiksel ve bilimsel problemler. |
+| **Kibar**     | İstanbul Beyefendisi            | Son derece nazik ve saygılı hitabet.          |
+| **Esprili**   | İronik & Şakacı                 | Stand-up tadında komik yanıtlar.              |
+| **Kodlayıcı** | Yazılım Mühendisi               | Bug ayıklama ve algoritma geliştirme.         |
+| **Romantik**  | Şair Ruhlu & Duygusal           | Şiirsel ve sevgi dolu yaklaşımlar.            |
 
 ---
 
@@ -66,50 +54,87 @@ Arayüze erişin: `http://localhost:8000`
 
 API güvenliği için tüm isteklerde `x-api-key: test` (varsayılan) header'ı gönderilmelidir.
 
+### Ana Endpoint'ler
+
 | Endpoint        | Metod    | Açıklama                                   |
 | :-------------- | :------- | :----------------------------------------- |
-| `/chat`         | `POST`   | AI ile sohbet et. (Arama ve Ses opsiyonel) |
+| `/chat`         | `POST`   | AI ile sohbet et.                          |
 | `/history`      | `GET`    | Tüm kayıtlı sohbet geçmişini listele.      |
 | `/history/{id}` | `DELETE` | Belirli bir sohbet geçmişini sil.          |
 | `/history`      | `DELETE` | Tüm geçmişi temizle.                       |
+| `/models`       | `GET`    | Ollama üzerindeki yüklü modelleri listele. |
 
-### Örnek Sohbet İsteği:
+### Sohbet İsteği Parametreleri:
 
 ```json
 {
-  "message": "Bugün hava nasıl?",
-  "web_search": true,
-  "enable_audio": false,
-  "session_id": "opsiyonel-uuid"
+  "message": "Naber Niko?",
+  "mode": "bilge", // normal, agresif, bilge, dahi, kibar, esprili, kodlayici, romantik
+  "web_search": true, // İnternet araması aktif
+  "enable_audio": true, // Sesli yanıt üretimi
+  "model": "RefinedNeuro/RN_TR_R2:latest", // Opsiyonel: Belirli bir model seçimi
+  "session_id": "uuid" // Mevcut sohbetin devamı için
 }
 ```
+
+## 🛠️ Kurulum ve Başlatma
+
+### 1. Kurulum
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Çalıştırma
+
+```bash
+# Servisi başlatın
+python main.py
+```
+
+Arayüze erişin: `http://localhost:8000`
 
 ---
 
 ## 🗺️ Yol Haritası
 
-- [x] **İnternet Araması:** DuckDuckGo entegrasyonu tamamlandı.
-- [x] **Sohbet Geçmişi:** Kalıcı oturum desteği eklendi.
+- [x] **İnternet Araması:** DuckDuckGo entegrasyonu.
+- [x] **Çoklu Karakter:** 8 farklı AI modu eklendi.
+- [x] **Mobil Senkronizasyon:** Rehber ve çağrı geçmişi yedekleme.
 - [x] **Düşünce Süreci:** Akıl yürütme blokları görselleştirildi.
 - [ ] **Görüntü İşleme:** Vision modelleri ile görsel analiz desteği.
-- [ ] **Dosya Analizi:** PDF, TXT ve CSV dosyalarını sorgulama yeteneği.
-- [ ] **Plugin Sistemi:** Spotify ve Google Takvim entegrasyonu.
-- [ ] **Sesli Komut:** Mikrofon üzerinden doğrudan konuşma desteği.
+- [ ] **Dosya Analizi:** PDF, TXT ve CSV dosyalarını sorgulama.
+- [ ] **Sesli Komut:** Mikrofon üzerinden doğrudan sesli komut alımı.
 
 ---
 
 ## ⚙️ Yapılandırma
 
-`main.py` içerisindeki varsayılan ayarları ortam değişkenleri (ENV) ile değiştirebilirsiniz:
+`main.py` veya ENV üzerinden özelleştirilebilir. Proje kök dizininde bir `.env` dosyası oluşturarak aşağıdaki ayarları tanımlayabilirsiniz:
 
-- `MODEL_NAME`: Kullanılacak LLM (Örn: `llama3`, `mistral`)
-- `API_KEY`: Güvenlik anahtarı (Varsayılan: `test`)
-- `VOICE_NAME`: TTS ses seçeneği (Örn: `tr-TR-EmelNeural`)
+```env
+# Kullanılacak LLM Modeli
+MODEL_NAME=RefinedNeuro/RN_TR_R2:latest
+
+# Sunucu Güvenlik Anahtarı
+API_KEY=test
+
+# Ollama API Adresi (Uzak sunucu ise değiştirin)
+OLLAMA_URL=http://127.0.0.1:11434/api/generate
+
+# Varsayılan Sistem Mesajı (Normal Mod İçin)
+SYSTEM_PROMPT="Senin adın Niko. Sen yardımsever, zeki ve profesyonel bir yapay zeka asistanısın."
+```
+
+### Parametre Açıklamaları:
+
+- **MODEL_NAME:** Ollama'da yüklü olan modelin adı.
+- **API_KEY:** API isteklerinde header olarak gönderilmesi gereken anahtar.
+- **OLLAMA_URL:** Ollama servisinin erişim adresi.
+- **SYSTEM_PROMPT:** Asistanın temel davranışını belirleyen başlangıç mesajı.
 
 ---
 
-> [!TIP] > **Cloudflare Kullanımı:** `python start_tunnel.py` komutu ile yerel sunucunuzu hiçbir ağ ayarı yapmadan internete güvenle açabilir ve güncel linke her zaman bu README üzerinden erişebilirsiniz.
+> [!TIP] > **Cloudflare Kullanımı:** `python start_tunnel.py` komutu ile yerel sunucunuzu internete açabilir ve güncel linke her zaman bu README üzerinden erişebilirsiniz.
 
-🌐 **Güncel Tünel Adresi:** [https://curious-shades-ontario-whenever.trycloudflare.com](https://curious-shades-ontario-whenever.trycloudflare.com)
-
-
+> 🌐 **Güncel Tünel Adresi:** [https://ron-nickname-wine-emotions.trycloudflare.com](https://ron-nickname-wine-emotions.trycloudflare.com)

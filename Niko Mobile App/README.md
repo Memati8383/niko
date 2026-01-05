@@ -112,9 +112,10 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 - [x] Sistem ayarları kontrolü (Wi-Fi, Bluetooth, Parlaklık vb. aç/kapa).
 - [ ] Çoklu dil desteği (İngilizce, Almanca vb.).
 - [ ] Hava durumu ve güncel haberler için sesli özet.
-- [ ] Sohbet Geçmişi.
+- [x] Sohbet Geçmişi.
 - [ ] Chat arayüzü.
 - [ ] Developer için debug ekranı.
+- [ ] Kayıt/Giriş ekranı ve sistemi.
 
 ## İletişim
 
