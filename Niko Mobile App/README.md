@@ -135,8 +135,10 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 - [ ] Developer için debug ekranı.
 - [ ] Kayıt/Giriş ekranı ve sistemi.
 - [ ] Whatsapp hataları düzeltilecek.
+- [ ] Parlaklık: "Parlaklığı arttır/azalt", "Işığı kıs/aç", "Parlaklığı yükselt/düşür" hataları düzelt,lecek
 
 ## İletişim
 
 Geliştirici ile iletişime geçmek için proje sayfasını ziyaret edebilirsiniz.
+
 
