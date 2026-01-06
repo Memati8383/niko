@@ -134,7 +134,9 @@ Proje içerisindeki temel dosyalar ve görevleri şunlardır:
 - [ ] Chat arayüzü.
 - [ ] Developer için debug ekranı.
 - [ ] Kayıt/Giriş ekranı ve sistemi.
+- [ ] Whatsapp hataları düzeltilecek.
 
 ## İletişim
 
 Geliştirici ile iletişime geçmek için proje sayfasını ziyaret edebilirsiniz.
+
