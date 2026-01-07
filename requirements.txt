@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+httpx
+edge-tts
+pydantic
+requests
+duckduckgo-search
+anyio
+chromadb
+pypdf
+tqdm
+ollama
+python-dotenv

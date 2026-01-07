@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Niko AI Asistan</title>
+    <link rel="stylesheet" href="static/style.css?v=3" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600;700&family=Fira+Code&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Highlight.js for code syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+  </head>
+  <body>
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+    <div id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-header-top">
+          <button id="new-chat-btn" class="new-chat-btn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Yeni Sohbet
+          </button>
+          <button id="clear-all-btn" class="icon-btn" title="Tümünü Temizle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+        </div>
+        <div class="search-box">
+          <input type="text" id="history-search" class="search-input" placeholder="Sohbetlerde ara..." />
+          <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+      </div>
+      <div class="stats-container">
+        <div class="stat-card">
+          <div class="stat-label">Sohbetler</div>
+          <div class="stat-value" id="chat-count">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Mesajlar</div>
+          <div class="stat-value" id="message-count">0</div>
+        </div>
+      </div>
+      <div id="history-items" class="history-items">
+        <!-- Geçmiş öğeleri buraya gelecek -->
+      </div>
+    </div>
+
+    <div id="app-container">
+      <header>
+        <div style="display: flex; align-items: center; gap: 15px">
+          <button id="menu-toggle" aria-label="Menüyü Aç/Kapat">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div style="display: flex; align-items: center; gap: 10px">
+          <div class="status-indicator">
+            <div class="status-dot"></div>
+            <div class="pulse-ring"></div>
+          </div>
+          <h1>Niko AI Asistan</h1>
+        </div>
+        <div class="header-actions">
+          <select id="mode-select" class="premium-select mode-select" title="AI Mod Seçimi">
+            <option value="normal">🤖 Normal</option>
+            <option value="rag">🏥 Sağlık (RAG)</option>
+            <option value="agresif">🔥 Agresif</option>
+            <option value="bilge">📜 Bilge</option>
+            <option value="dahi">🧠 Dahi</option>
+            <option value="kibar">🎩 Kibar</option>
+            <option value="esprili">🤣 Esprili</option>
+            <option value="kodlayici">💻 Kodlayıcı</option>
+            <option value="romantik">💖 Romantik</option>
+          </select>
+          <select id="model-select" class="premium-select">
+            <option value="">Yükleniyor...</option>
+          </select>
+          <button id="help-btn" class="icon-btn" title="Kısayollar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="main-content">
+
+        <div id="chat-history">
+          <!-- Messages will be appended here by script.js -->
+
+          <!-- Typing Indicator (Initially Hidden) -->
+          <div id="typing-indicator" class="typing-indicator">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <button id="search-toggle" aria-label="İnternet Araması" title="İnternet Araması">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+        <button id="rag-toggle" aria-label="Sağlık Veritabanı" title="Sağlık Veritabanı (RAG)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+        </button>
+        <textarea
+          id="message-input"
+          placeholder="Bir şeyler sorun..."
+          rows="1"
+        ></textarea>
+        <button id="send-btn" aria-label="Gönder">
+          <svg
+            id="send-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+          <svg
+            id="stop-icon"
+            style="display: none;"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="modal-overlay" class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </div>
+          <h2 id="modal-title">Emin misiniz?</h2>
+        </div>
+        <p id="modal-description">Bu işlem geri alınamaz ve tüm mesajlar kalıcı olarak silinir.</p>
+        <div class="modal-actions">
+          <button id="modal-cancel" class="modal-btn secondary">Vazgeç</button>
+          <button id="modal-confirm" class="modal-btn primary">Evet, Sil</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Selection Menu -->
+    <div id="selection-menu" class="selection-menu">
+      <button class="selection-btn" data-action="explain" title="Açıkla">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        <span>Açıkla</span>
+      </button>
+      <button class="selection-btn" data-action="summarize" title="Özetle">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+        <span>Özetle</span>
+      </button>
+      <button class="selection-btn" data-action="translate" title="Çevir">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+        <span>Çevir</span>
+      </button>
+      <button class="selection-btn" data-action="copy" title="Kopyala">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        <span>Kopyala</span>
+      </button>
+    </div>
+
+    <!-- Shortcuts Modal -->
+    <div id="shortcuts-modal" class="modal-overlay">
+      <div class="modal shortcuts-modal">
+        <div class="modal-header">
+          <div class="modal-icon help-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <h2>Klavye Kısayolları</h2>
+        </div>
+        <div class="shortcuts-list">
+          <div class="shortcut-item">
+            <span class="shortcut-key">Enter</span>
+            <span class="shortcut-desc">Mesaj Gönder</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-key">Shift + Enter</span>
+            <span class="shortcut-desc">Yeni Satır</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-key">Esc</span>
+            <span class="shortcut-desc">Cevabı Durdur / Menüleri Kapat</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-key">Ctrl + N</span>
+            <span class="shortcut-desc">Yeni Sohbet</span>
+          </div>
+          <div class="shortcut-item">
+            <span class="shortcut-key">Ctrl + K</span>
+            <span class="shortcut-desc">Sohbetlerde Ara</span>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="shortcuts-close" class="modal-btn primary">Anladım</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Social Media Links -->
+    <div class="social-links-container" id="social-links">
+      <button class="social-trigger" id="social-trigger" aria-label="Sosyal Medya">
+        <div class="trigger-aura"></div>
+        <div class="trigger-icon">
+          <span class="line"></span>
+          <span class="line"></span>
+        </div>
+      </button>
+      <div class="social-menu" id="social-menu">
+        <a href="https://instagram.com/ferit22901" target="_blank" class="social-item instagram" style="--i:1" title="Instagram">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+        </a>
+        <a href="https://tiktok.com/@erdoganfedaisi0" target="_blank" class="social-item tiktok" style="--i:2" title="TikTok">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path></svg>
+        </a>
+        <a href="https://github.com/memati8383" target="_blank" class="social-item github" style="--i:3" title="GitHub">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        </a>
+        <a href="https://t.me/AlemdarFerit" target="_blank" class="social-item telegram" style="--i:4" title="Telegram">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Script -->
+    <script src="static/script.js?v=2"></script>
+  </body>
+</html>
