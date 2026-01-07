@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
 
@@ -6,4 +7,14 @@
         android:gradientRadius="160dp"
         android:startColor="#3300E5FF"
         android:endColor="@android:color/transparent"/>
+=======
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <gradient
+        android:type="radial"
+        android:gradientRadius="160dp"
+        android:startColor="#3300E5FF"
+        android:endColor="@android:color/transparent"/>
+>>>>>>> b554b426b90ac16dd9878d0ce1c1cfbc5da6215a
 </shape>
