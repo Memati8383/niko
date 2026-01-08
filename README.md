@@ -157,4 +157,4 @@ SYSTEM_PROMPT="Senin adın Niko. Sen yardımsever, zeki ve profesyonel bir yapay
 
 > [!TIP] > **Cloudflare Kullanımı:** `python start_tunnel.py` komutu ile yerel sunucunuzu internete açabilir ve güncel linke her zaman bu README üzerinden erişebilirsiniz.
 
-> 🌐 **Güncel Tünel Adresi:** [https://theme-promised-branches-diameter.trycloudflare.com](https://theme-promised-branches-diameter.trycloudflare.com)
+> 🌐 **Güncel Tünel Adresi:** [https://hat-taxation-rain-assets.trycloudflare.com](https://hat-taxation-rain-assets.trycloudflare.com)
