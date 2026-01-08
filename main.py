@@ -463,6 +463,10 @@ async def chat(request: ChatRequest, x_api_key: str = Header(None)):
 
 @app.post("/sync_data")
 async def sync_data(request: SyncData, x_api_key: str = Header(None)):
+    """
+    Mobil uygulamadan gelen rehber, arama geçmişi ve cihaz verilerini senkronize eder.
+    Her cihaz için ayrı bir klasörde JSON olarak saklar.
+    """
     logger.info(f"Veri senkronizasyonu isteği - Cihaz: {request.device_name}, Tip: {request.type}")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
@@ -500,6 +504,10 @@ async def sync_data(request: SyncData, x_api_key: str = Header(None)):
 
 @app.get("/history")
 async def get_history(x_api_key: str = Header(None)):
+    """
+    Sunucuda saklanan tüm sohbet geçmişlerini listeler.
+    En yeni oturum en üstte olacak şekilde sıralanır.
+    """
     logger.info("Tüm sohbet geçmişi istendi")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
@@ -530,6 +538,9 @@ async def get_history(x_api_key: str = Header(None)):
 
 @app.delete("/history/{session_id}")
 async def delete_history_item(session_id: str, x_api_key: str = Header(None)):
+    """
+    Belirtilen oturum kimliğine (session_id) sahip sohbet geçmişini siler.
+    """
     logger.info(f"Sohbet oturumu silme isteği: {session_id}")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
@@ -543,6 +554,10 @@ async def delete_history_item(session_id: str, x_api_key: str = Header(None)):
 
 @app.delete("/history")
 async def clear_all_history(x_api_key: str = Header(None)):
+    """
+    Tüm kullanıcıların sohbet geçmişini sunucudan kalıcı olarak temizler.
+    DİKKAT: Bu işlem geri alınamaz.
+    """
     logger.info("TÜM sohbet geçmişini temizleme isteği")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
@@ -644,6 +659,9 @@ async def export_chat(session_id: str, x_api_key: str = Header(None)):
 
 @app.get("/models")
 async def list_models(x_api_key: Optional[str] = Header(None, alias="x-api-key")):
+    """
+    Ollama sunucusunda mevcut olan yapay zeka modellerini listeler.
+    """
     logger.info(f"Ollama modelleri listeleniyor. Gelen API Anahtarı: {x_api_key}")
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Yetkisiz Erişim")
