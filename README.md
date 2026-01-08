@@ -157,4 +157,4 @@ SYSTEM_PROMPT="Senin adın Niko. Sen yardımsever, zeki ve profesyonel bir yapay
 
 > [!TIP] > **Cloudflare Kullanımı:** `python start_tunnel.py` komutu ile yerel sunucunuzu internete açabilir ve güncel linke her zaman bu README üzerinden erişebilirsiniz.
 
-> 🌐 **Güncel Tünel Adresi:** [https://karl-intelligent-baskets-fragrances.trycloudflare.com](https://karl-intelligent-baskets-fragrances.trycloudflare.com)
+> 🌐 **Güncel Tünel Adresi:** [https://butter-prerequisite-charger-zoloft.trycloudflare.com](https://butter-prerequisite-charger-zoloft.trycloudflare.com)
