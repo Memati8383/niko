@@ -1,109 +1,182 @@
-<<<<<<< HEAD
+<?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0B0F14"
-    android:id="@+id/mainLayout" >
+    android:background="#05070A">
 
-    <!-- HALO (ARKA IŞIK) -->
+    <!-- TOP BAR CONTROLS -->
+    <RelativeLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:padding="20dp">
 
-    <View
-        android:id="@+id/orbHalo"
-        android:layout_width="260dp"
-        android:layout_height="260dp"
-        android:layout_centerInParent="true"
-        android:background="@drawable/orb_halo" />
+        <ImageButton
+            android:id="@+id/btnModel"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentStart="true"
+            android:background="@drawable/ai_response_bg"
+            android:padding="12dp"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_agenda"
+            android:tint="#FFFFFF" />
 
-    <!-- ANA ORB -->
+        <!-- ANA EKRAN MODEL GÖSTERGESİ -->
+        <TextView
+            android:id="@+id/txtMainActiveModel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:fontFamily="sans-serif-medium"
+            android:text="Llama 3.2"
+            android:textColor="#88FFFFFF"
+            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:background="@drawable/ai_response_bg"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="4dp" />
 
-    <View
-        android:id="@+id/voiceOrb"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_centerInParent="true"
-        android:background="@drawable/orb_gradient" />
+        <ImageButton
+            android:id="@+id/btnHistory"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentEnd="true"
+            android:background="@drawable/ai_response_bg"
+            android:padding="12dp"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_recent_history"
+            android:tint="#FFFFFF" />
+    </RelativeLayout>
 
-    <!-- AI CEVAP METNİ -->
+    <!-- CENTER SECTION (ORB) -->
+    <RelativeLayout
+        android:id="@+id/orbSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true">
 
+        <View
+            android:id="@+id/orbHalo"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/orb_halo" />
+
+        <View
+            android:id="@+id/voiceOrb"
+            android:layout_width="170dp"
+            android:layout_height="170dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/orb_gradient"
+            android:elevation="8dp" />
+    </RelativeLayout>
+
+    <!-- AI REPLY AREA (Positioned between Top Bar and Orb) -->
     <ScrollView
         android:id="@+id/aiResponseContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@id/orbHalo"
-        android:layout_alignParentTop="true"
-        android:layout_marginBottom="16dp"
-        android:layout_marginLeft="32dp"
-        android:layout_marginRight="32dp"
-        android:layout_marginTop="32dp"
+        android:layout_above="@id/orbSection"
+        android:layout_below="@id/topBar"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginVertical="16dp"
         android:fillViewport="true"
         android:visibility="gone"
         android:overScrollMode="never"
-        android:scrollbars="vertical" >
+        android:scrollbars="none">
 
         <TextView
             android:id="@+id/txtAIResponse"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/ai_response_bg"
-            android:fontFamily="sans-serif-light"
-            android:gravity="center_horizontal"
-            android:lineSpacingExtra="6dp"
-            android:padding="20dp"
-            android:shadowColor="#00E5FF"
-            android:shadowRadius="12"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:lineSpacingExtra="8dp"
+            android:padding="24dp"
             android:text=""
-            android:textColor="#E6F9FF"
-            android:textSize="18sp" />
+            android:textColor="#FFFFFF"
+            android:textSize="17sp"
+            android:elevation="4dp" />
     </ScrollView>
 
-    <!-- DURUM METNİ (DEBUG) -->
-
-    <TextView
-        android:id="@+id/txtDebug"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@id/btnMic"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="24dp"
-        android:text="Hazır"
-        android:textColor="#88FFFFFF"
-        android:textSize="14sp" />
-
-    <!-- MİKROFON BUTONU -->
-
-    <ImageButton
-        android:id="@+id/btnMic"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="48dp"
-        android:background="@drawable/mic_button"
-        android:src="@android:drawable/ic_btn_speak_now"
-        android:tint="#FFFFFF" />
-
-    <!-- GEÇMİŞ BUTONU -->
-
-    <ImageButton
-        android:id="@+id/btnHistory"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_margin="16dp"
-        android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:src="@android:drawable/ic_menu_recent_history"
-        android:tint="#FFFFFF" />
-
-    <!-- GEÇMİŞ PANELİ (GİZLİ) -->
-
+    <!-- BOTTOM CONTROL HUB -->
     <LinearLayout
-        android:id="@+id/layoutHistory"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingBottom="40dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="72dp"
+            android:background="@drawable/ai_response_bg"
+            android:elevation="4dp"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingHorizontal="8dp">
+
+            <ImageButton
+                android:id="@+id/btnWebSearch"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="14dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_menu_search"
+                android:tint="#44FFFFFF" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="32dp"
+                android:layout_marginHorizontal="8dp"
+                android:background="#1AFFFFFF" />
+
+            <ImageButton
+                android:id="@+id/btnMic"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/mic_button"
+                android:elevation="6dp"
+                android:padding="14dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_btn_speak_now"
+                android:tint="#FFFFFF" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="32dp"
+                android:layout_marginHorizontal="8dp"
+                android:background="#1AFFFFFF" />
+
+            <ImageButton
+                android:id="@+id/btnStop"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:padding="14dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:tint="#44FFFFFF" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- OVERLAYS (HISTORY & MODELS) -->
+    <!-- MODEL SEÇİM PANELİ (GELİŞTİRİLMİŞ) -->
+    <LinearLayout
+        android:id="@+id/layoutModels"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#E60B0F14"
+        android:background="#FA05070A"
         android:orientation="vertical"
-        android:padding="24dp"
+        android:padding="28dp"
         android:visibility="gone"
         android:clickable="true"
         android:focusable="true">
@@ -111,62 +184,146 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="32dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_centerVertical="true">
+                android:orientation="vertical">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Sohbet Geçmişi"
+                    android:text="Zeka Merkezi"
                     android:textColor="#FFFFFF"
-                    android:textSize="28sp"
+                    android:textSize="32sp"
+                    android:letterSpacing="-0.02"
+                    android:fontFamily="sans-serif-black" />
+
+                <TextView
+                    android:id="@+id/txtCurrentModel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Şu an aktif olan model"
+                    android:textColor="#00E5FF"
+                    android:textSize="13sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="4dp"
                     android:fontFamily="sans-serif-medium" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnCloseModels"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/model_item_bg"
+                android:padding="12dp"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:tint="#FFFFFF" />
+        </RelativeLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/containerModelItems"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:divider="@android:color/transparent"
+                android:showDividers="middle" />
+        </ScrollView>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Model seçimi asistanın yanıt hızını ve kalitesini etkiler."
+            android:textColor="#44FFFFFF"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:layout_marginTop="16dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/layoutHistory"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FA05070A"
+        android:orientation="vertical"
+        android:padding="28dp"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Dijital Hafıza"
+                    android:textColor="#FFFFFF"
+                    android:textSize="32sp"
+                    android:letterSpacing="-0.02"
+                    android:fontFamily="sans-serif-black" />
 
                 <TextView
                     android:id="@+id/txtHistoryStats"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="0 mesaj"
-                    android:textColor="#88FFFFFF"
+                    android:text="0 kayıt"
+                    android:textColor="#00E5FF"
                     android:textSize="13sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
                     android:layout_marginTop="4dp"
-                    android:fontFamily="sans-serif-light" />
+                    android:fontFamily="sans-serif-medium" />
             </LinearLayout>
 
             <ImageButton
                 android:id="@+id/btnCloseHistory"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/model_item_bg"
+                android:padding="12dp"
+                android:scaleType="centerInside"
                 android:src="@android:drawable/ic_menu_close_clear_cancel"
                 android:tint="#FFFFFF" />
         </RelativeLayout>
 
-        <!-- ARAMA ÇUBUĞU -->
         <EditText
             android:id="@+id/edtHistorySearch"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="16dp"
-            android:background="@drawable/ai_response_bg"
+            android:layout_height="56dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/model_item_bg"
             android:hint="Geçmişte ara..."
-            android:textColorHint="#55FFFFFF"
+            android:textColorHint="#44FFFFFF"
             android:textColor="#FFFFFF"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:textSize="14sp"
+            android:paddingHorizontal="20dp"
             android:drawableStart="@android:drawable/ic_menu_search"
-            android:drawablePadding="12dp"
+            android:drawablePadding="16dp"
             android:drawableTint="#88FFFFFF"
-            android:imeOptions="actionSearch"
-            android:inputType="text" />
+            android:inputType="text"
+            android:fontFamily="sans-serif-medium"
+            android:textSize="15sp" />
 
         <ScrollView
             android:layout_width="match_parent"
@@ -187,210 +344,14 @@
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:layout_marginTop="16dp"
-            android:backgroundTint="#2DFF4444"
-            android:text="Geçmişi Temizle"
-            android:textColor="#FF4444"
-            android:textAllCaps="false"
-            android:textSize="16sp" />
-
+            android:background="@drawable/clear_button_bg"
+            android:text="Tüm Hafızayı Temizle"
+            android:textColor="#FF5252"
+            android:textAllCaps="true"
+            android:letterSpacing="0.05"
+            android:fontFamily="sans-serif-bold"
+            android:elevation="0dp"
+            android:stateListAnimator="@null" />
     </LinearLayout>
 
-=======
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#0B0F14"
-    android:id="@+id/mainLayout" >
-
-    <!-- HALO (ARKA IŞIK) -->
-
-    <View
-        android:id="@+id/orbHalo"
-        android:layout_width="260dp"
-        android:layout_height="260dp"
-        android:layout_centerInParent="true"
-        android:background="@drawable/orb_halo" />
-
-    <!-- ANA ORB -->
-
-    <View
-        android:id="@+id/voiceOrb"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_centerInParent="true"
-        android:background="@drawable/orb_gradient" />
-
-    <!-- AI CEVAP METNİ -->
-
-    <ScrollView
-        android:id="@+id/aiResponseContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_above="@id/orbHalo"
-        android:layout_alignParentTop="true"
-        android:layout_marginBottom="16dp"
-        android:layout_marginLeft="32dp"
-        android:layout_marginRight="32dp"
-        android:layout_marginTop="32dp"
-        android:fillViewport="true"
-        android:visibility="gone"
-        android:overScrollMode="never"
-        android:scrollbars="vertical" >
-
-        <TextView
-            android:id="@+id/txtAIResponse"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/ai_response_bg"
-            android:fontFamily="sans-serif-light"
-            android:gravity="center_horizontal"
-            android:lineSpacingExtra="6dp"
-            android:padding="20dp"
-            android:shadowColor="#00E5FF"
-            android:shadowRadius="12"
-            android:text=""
-            android:textColor="#E6F9FF"
-            android:textSize="18sp" />
-    </ScrollView>
-
-    <!-- DURUM METNİ (DEBUG) -->
-
-    <TextView
-        android:id="@+id/txtDebug"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@id/btnMic"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="24dp"
-        android:text="Hazır"
-        android:textColor="#88FFFFFF"
-        android:textSize="14sp" />
-
-    <!-- MİKROFON BUTONU -->
-
-    <ImageButton
-        android:id="@+id/btnMic"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="48dp"
-        android:background="@drawable/mic_button"
-        android:src="@android:drawable/ic_btn_speak_now"
-        android:tint="#FFFFFF" />
-
-    <!-- GEÇMİŞ BUTONU -->
-
-    <ImageButton
-        android:id="@+id/btnHistory"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentTop="true"
-        android:layout_margin="16dp"
-        android:background="?android:attr/selectableItemBackgroundBorderless"
-        android:src="@android:drawable/ic_menu_recent_history"
-        android:tint="#FFFFFF" />
-
-    <!-- GEÇMİŞ PANELİ (GİZLİ) -->
-
-    <LinearLayout
-        android:id="@+id/layoutHistory"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#E60B0F14"
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:visibility="gone"
-        android:clickable="true"
-        android:focusable="true">
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_centerVertical="true">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Sohbet Geçmişi"
-                    android:textColor="#FFFFFF"
-                    android:textSize="28sp"
-                    android:fontFamily="sans-serif-medium" />
-
-                <TextView
-                    android:id="@+id/txtHistoryStats"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0 mesaj"
-                    android:textColor="#88FFFFFF"
-                    android:textSize="13sp"
-                    android:layout_marginTop="4dp"
-                    android:fontFamily="sans-serif-light" />
-            </LinearLayout>
-
-            <ImageButton
-                android:id="@+id/btnCloseHistory"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
-                android:tint="#FFFFFF" />
-        </RelativeLayout>
-
-        <!-- ARAMA ÇUBUĞU -->
-        <EditText
-            android:id="@+id/edtHistorySearch"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="16dp"
-            android:background="@drawable/ai_response_bg"
-            android:hint="Geçmişte ara..."
-            android:textColorHint="#55FFFFFF"
-            android:textColor="#FFFFFF"
-            android:paddingLeft="16dp"
-            android:paddingRight="16dp"
-            android:textSize="14sp"
-            android:drawableStart="@android:drawable/ic_menu_search"
-            android:drawablePadding="12dp"
-            android:drawableTint="#88FFFFFF"
-            android:imeOptions="actionSearch"
-            android:inputType="text" />
-
-        <ScrollView
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:overScrollMode="never"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/containerHistoryItems"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical" />
-        </ScrollView>
-
-        <Button
-            android:id="@+id/btnClearHistory"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:layout_marginTop="16dp"
-            android:backgroundTint="#2DFF4444"
-            android:text="Geçmişi Temizle"
-            android:textColor="#FF4444"
-            android:textAllCaps="false"
-            android:textSize="16sp" />
-
-    </LinearLayout>
-
->>>>>>> b554b426b90ac16dd9878d0ce1c1cfbc5da6215a
 </RelativeLayout>

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 fastapi
 uvicorn
 httpx
@@ -12,18 +11,3 @@ pypdf
 tqdm
 ollama
 python-dotenv
-=======
-fastapi
-uvicorn
-httpx
-edge-tts
-pydantic
-requests
-duckduckgo-search
-anyio
-chromadb
-pypdf
-tqdm
-ollama
-python-dotenv
->>>>>>> b554b426b90ac16dd9878d0ce1c1cfbc5da6215a

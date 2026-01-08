@@ -1,24 +1,13 @@
-<<<<<<< HEAD
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="oval">
 
     <gradient
         android:type="radial"
-        android:gradientRadius="120dp"
-        android:startColor="#66FFFFFF"
+        android:gradientRadius="140dp"
+        android:startColor="#FFFFFF"
         android:centerColor="#00E5FF"
-        android:endColor="#006064"/>
+        android:endColor="#006064"
+        android:centerX="0.5"
+        android:centerY="0.5"/>
 
-=======
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-
-    <gradient
-        android:type="radial"
-        android:gradientRadius="120dp"
-        android:startColor="#66FFFFFF"
-        android:centerColor="#00E5FF"
-        android:endColor="#006064"/>
-
->>>>>>> b554b426b90ac16dd9878d0ce1c1cfbc5da6215a
 </shape>
