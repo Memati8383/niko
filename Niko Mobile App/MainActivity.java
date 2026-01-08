@@ -168,7 +168,7 @@ public class MainActivity extends Activity {
     public static RemoteInput lastRemoteInput; // Cevap girişi için referans
 
     // API URL
-    private static final String API_BASE_URL = "https://hat-taxation-rain-assets.trycloudflare.com";
+    private static final String API_BASE_URL = "https://blond-thumb-step-trance.trycloudflare.com";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
